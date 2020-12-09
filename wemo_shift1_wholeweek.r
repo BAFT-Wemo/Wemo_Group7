@@ -179,57 +179,61 @@ test_s1_we %>%
   facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
   labs(x='', title='Time series for offline scooters in 00:00 on testing data in weekends')
 
-### naive prediction
-naive_pred_wd <- train_s1_wd%>%
-  mutate(date = as.Date(service_hour_date))%>%
+
+#####################
+# Naive
+#set up naive for comparison. final date training period sales: 2020-07-31
+naive_pred_s1 <- train_s1%>%
+  mutate(service_hour_date = as.Date(service_hour_date))%>%
   group_by(admin_town_en)%>%
-  filter(date == last(date))%>%
+  filter(service_hour_date == last(service_hour_date))%>%
   pull(sum_offline_scooter)
 
-naive_pred_we <- train_s1_we%>%
-  mutate(date = as.Date(service_hour_date))%>%
+naive_towns_s1 <- train_s1%>%
+  mutate(service_hour_date = as.Date(service_hour_date))%>%
   group_by(admin_town_en)%>%
-  filter(date == last(date))%>%
-  pull(sum_offline_scooter)
-
-naive_towns_wd <- train_s1_wd%>%
-  mutate(date = as.Date(service_hour_date))%>%
-  group_by(admin_town_en)%>%
-  filter(date == last(date))%>%
+  filter(service_hour_date == last(service_hour_date))%>%
   pull(admin_town_en)
 
-naive_towns_we <- train_s1_we%>%
-  mutate(date = as.Date(service_hour_date))%>%
+#create a 'naive df' of final value repeated 30 days forward
+naive_df_s1 <- data.frame(forecast = rep(naive_pred_s1, 30),
+                       admin_town_en = rep(naive_towns_s1, 30))
+naive_s1 <- naive_df_s1%>%
   group_by(admin_town_en)%>%
-  filter(date == last(date))%>%
-  pull(admin_town_en)
+  mutate(service_hour_date = seq.Date(as.Date('2020-08-01'),
+                         by='day', length.out = 30))
 
-naive_df_wd <- data.frame(forecast = rep(naive_pred_wd, 20),
-                       admin_town_en = rep(naive_towns_wd, 20),
-                       service_hour_date = test_s1_wd$service_hour_date)
+naive_s1$service_hour_date <- as.character(naive_s1$service_hour_date)
 
-naive_df_wd <- naive_df_wd %>%
-  inner_join(test_s1_wd, by = c('admin_town_en', 'service_hour_date'))
+#Join test set
+naive_forecast_date <- naive_s1 %>%
+  inner_join(test_s1, by = c('service_hour_date', 'admin_town_en'))
 
-# calculate forecast error i
-naive_df_wd <- naive_df_wd %>%
+
+# label your model forecasts for later visualization
+navie_forecast_date <- naive_forecast_date %>%
+  mutate(model = 'naive')
+
+#calculate forecast error i
+naive_forecast_date <- naive_forecast_date %>%
   mutate(error = forecast-sum_offline_scooter)
 
-#plot error series
-naive_df_wd%>%
-  ggplot(aes(as.Date(service_hour_date), error, color=admin_town_en))+
+#plot error series.
+naive_forecast_date%>%
+  ggplot(aes(service_hour_date, error, color=admin_town_en, group=admin_town_en))+
   geom_line()+
   guides(color=F)+
-  facet_wrap(~admin_town_en, nrow=5)+
-  labs(x='', title='Rediduals for offline scooters in 00:00 weekday in testing set')
+  facet_wrap(~admin_town_en, nrow=5)
 
-# CHECK ACCURACY ON TEST SET: RMSE 231.9899
-naive_forecast_accuracy <- forecast::accuracy(naive_df_wd$forecast, naive_df_wd$sum_offline_scooter)
+#CHECK ACCURACY ON TEST SET: RMSE 231.9899
+naive_forecast_accuracy <- forecast::accuracy(naive_forecast_date$forecast, naive_forecast_date$sum_offline_scooter)
 
-# calculate each rmse
-naive_df_wd %>%
+# Calculate each RMSE
+naive_forecast_date%>%
   group_by(admin_town_en)%>%
-  summarize(rm = rmse(sum_offline_scooter, forecast))
+  summarize(rm = rmse(sum_offline_scooter,forecast))
+
+
 
 ################### BUILD TS OBJECTS
 # CONVERT TO DATE GROUP AND THEN NEST EACH MATERIAL INTO LIST COLUMNS
@@ -402,6 +406,13 @@ snaive_forecast_date <- snaive_forecast_date %>%
 ############ Combine all into one long DF
 # LOOK AT PREDICTION ERROR FOR ALL MODELS
 
+# change column names from naive model to match others. forecast is pred, sum_offline_scooter is actual
+naive_forecast_date <- navie_forecast_date %>%
+  mutate(sum_offline_scooter.x = forecast,
+         sum_offline_scooter.y = sum_offline_scooter,
+         value = NULL,
+         sum_offline_scooter = NULL)
+
 # change column names from lm model to match others. Value is pred, sum_offline_scooter is actual
 lm_forecast_date <- lm_forecast_date %>%
   mutate(sum_offline_scooter.x = value,
@@ -409,11 +420,13 @@ lm_forecast_date <- lm_forecast_date %>%
          value = NULL,
          sum_offline_scooter = NULL)
 
+
 # Combine all models into one long DF
 full_df <- rbind(lm_forecast_date, 
                  ar_forecast_date,
                  ets_forecast_date,
-                 snaive_forecast_date)
+                 snaive_forecast_date,
+                 naive_forecast_date)
 
 full_df <- full_df%>%
   mutate(error = sum_offline_scooter.x - sum_offline_scooter.y)

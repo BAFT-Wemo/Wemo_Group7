@@ -224,7 +224,7 @@ naive_df_wd%>%
   labs(x='', title='Rediduals for offline scooters in 00:00 weekday in testing set')
 
 # CHECK ACCURACY ON TEST SET: RMSE 231.9899
-forecast::accuracy(naive_df_wd$forecast, naive_df_wd$sum_offline_scooter)
+naive_forecast_accuracy <- forecast::accuracy(naive_df_wd$forecast, naive_df_wd$sum_offline_scooter)
 
 # calculate each rmse
 naive_df_wd %>%
@@ -425,9 +425,10 @@ full_df%>%
   facet_wrap(~admin_town_en, ncol =2, scale='free_y')+
   labs(x='', title='Residuals for offline scooters in [shift1] on testing data in [whole week]')
 
-
+# Print out accuracy of each model
 naive_forecast_accuracy
 snaive_forecast_accuracy
 ar_forecast_accuracy
 lm_forecast_accuracy
 ets_forecast_accuracy
+

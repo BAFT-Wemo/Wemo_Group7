@@ -429,5 +429,6 @@ full_df <- full_df%>%
 full_df%>%
   ggplot(aes(service_hour_date, error, color=model, group=model))+
   geom_line()+
-  facet_wrap(~admin_town_en, ncol =2, scale='free_y')
+  facet_wrap(~admin_town_en, ncol =2, scale='free_y')+
+  labs(x='', title='Residuals for offline scooters in shift1 on testing data in whole week')
 

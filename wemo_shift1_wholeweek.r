@@ -60,6 +60,16 @@ shift_1_weekday %>%
   facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
   labs(x='', title='Time series for offline scooters in 00:00 weekday')
 
+data %>%
+  group_by(admin_town_en)%>%
+  ggplot(aes(as.Date(service_hour_date), sum_offline_scooter, color=admin_town_en))+
+  geom_line(size=.4)+
+  guides(color=F)+
+  facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
+  labs(x='', title=paste("Time series for offline scooters in" + time + "on training data in weekdays"))
+
+plot.ts(shift_1_weekday, shift.time[1])
+
 # Shift 2
 shift_2_weekend <- wemo.df.new%>%
   filter(shift == '08:00:00'&weekend_or_weekday == 1)

@@ -7,6 +7,7 @@ library(sweep)
 
 ### Calculate RMSE for each districts
 
+
 dist.rmse <- function(model_error){
   model_rmse <- model_error%>%
     group_by(admin_town_en)%>%
@@ -16,6 +17,9 @@ dist.rmse <- function(model_error){
 
 ### Naive Forecast
 # Create naive model
+# e.g.
+# Naive.model(train_s1, test_s1, 30, '2020-08-01')
+
 Naive.model <- function(train_data, test_data, repeated_day, last_naive_day){
   # Create naive prediction items
   naive_pred <- input_data%>%
@@ -56,6 +60,9 @@ Naive.model <- function(train_data, test_data, repeated_day, last_naive_day){
 }
 
 # Plot naive error series.
+# e.g.
+# naive_result <- Naive.model(train_s1, test_s1, 30, '2020-08-01')
+# naive.plot(naive_result)
 
 naive.plot <- function(naive_result){
   plot <- naive_result %>%

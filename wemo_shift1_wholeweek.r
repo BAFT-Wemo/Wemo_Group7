@@ -4,9 +4,12 @@ library(timetk)
 library(Metrics)
 library(lubridate)
 library(sweep)
+source("~/BAFT/wemo_project/function.r")
+
+train_t <- separate_shift(wemo.df.new, '00:00:00')
 
 # Read in data
-wemo.df <- read.csv("Downloads/Data_Jan_to_Aug.csv")
+wemo.df <- read.csv("~/BAFT/wemo_project/Data_Jan_to_Aug.csv")
 wemo.df$service_hour=as.POSIXct(paste(wemo.df$service_hour_date, wemo.df$shift), format="%Y-%m-%d %H:%M:%S")
 
 # Filter area & time (days without 3 shifts)
@@ -89,6 +92,21 @@ shift_3_weekday %>%
 # Whole week
 train_s1 <- shift_1%>%
   filter(service_hour_date <= as.Date('2020-07-31'))
+train_data <-function(data, date){
+  train <- data%>%
+    filter(service_hour_date <= as.Date(date))
+  return(train)
+}
+b <- train_data(shift_1, '2020-07-31')
+
+test_data <-function(data, date){
+  test <- data%>%
+    filter(service_hour_date > as.Date(date))
+  return(test)
+}
+
+c <- test_data(shift_1, '2020-07-31')
+
 test_s1 <- shift_1%>%
   filter(service_hour_date > as.Date('2020-07-31'))
 

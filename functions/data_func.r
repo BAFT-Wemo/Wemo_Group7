@@ -1,9 +1,7 @@
 library(tidyverse)
-library(forecast)
 library(timetk)
 library(Metrics)
 library(lubridate)
-library(sweep)
 
 ### separate shift into three time series
 # e.g.

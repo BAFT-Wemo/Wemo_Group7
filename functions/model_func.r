@@ -7,7 +7,6 @@ library(sweep)
 
 ### Calculate RMSE for each districts
 
-
 dist.rmse <- function(model_error){
   model_rmse <- model_error%>%
     group_by(admin_town_en)%>%

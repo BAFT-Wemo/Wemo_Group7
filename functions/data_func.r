@@ -37,8 +37,9 @@ plot.ts <- function(data, time){
 # train_s1 <- train_data(shift_1, '2020-07-31')
 # test_s1 <- test_data(shift_1, '2020-07-31')
 
-# Question? how to define 1 week ahead? every Friday?
-roll_forward <- c("2020-07-31")
+# roll forward 8 times
+roll_forward <- c("2020-08-02", "2020-07-26", "2020-07-19", "2020-07-12", 
+                  "2020-07-05", "2020-06-28", "2020-06-21", "2020-06-14")
 
 train_data <-function(data, date){
   train <- data%>%

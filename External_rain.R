@@ -277,10 +277,13 @@ RMSE1 <- c(RMSE.test.Zhonghe1,RMSE.test.Banqiao1, RMSE.test.Beitou1,RMSE.test.Da
            RMSE.test.Nangang1,RMSE.test.Neihu1,RMSE.test.Shilin1,RMSE.test.Songshan1,RMSE.test.Tamsui1,RMSE.test.Wanhua1 ,
            RMSE.test.Wenshan1,RMSE.test.Xindian1,RMSE.test.Xinyi1,RMSE.test.Xinzhuang1,RMSE.test.Yonghe1,
            RMSE.test.Zhongshan1 ,RMSE.test.Zhongzheng1 )
-
-#284.9269
-mean(RMSE1)
 RMSE1
+#[1] 176.00413 386.54507 232.81846 338.92195 771.31638  52.13788 109.21378 269.33820 215.74506 462.14464  47.92619
+#[12] 131.38242 112.83052 171.19627 283.79546  86.05179  67.95577 360.73766 233.42805
+
+mean(RMSE1)
+#237.3416
+
 
 ########################################################
 #shift2
@@ -486,9 +489,12 @@ RMSE2 <- c(RMSE.test.Zhonghe2,RMSE.test.Banqiao2, RMSE.test.Beitou2,RMSE.test.Da
            RMSE.test.Nangang2,RMSE.test.Neihu2,RMSE.test.Shilin2,RMSE.test.Songshan2,RMSE.test.Tamsui2,RMSE.test.Wanhua2 ,
            RMSE.test.Wenshan2,RMSE.test.Xindian2,RMSE.test.Xinyi2,RMSE.test.Xinzhuang2,RMSE.test.Yonghe2,
            RMSE.test.Zhongshan2 ,RMSE.test.Zhongzheng2)
+RMSE2
+#[1]  173.96335  209.69298  205.58586  349.21561 1168.84792   60.52964  112.04693  331.86952  193.82366  454.11535
+#[11]   38.28063  118.37427  134.92652  188.13695  248.06694   76.98402   67.10429  325.36792  199.82154
 
-#245.0923
 mean(RMSE2)
+#245.0923
 
 #########################################################
 #shift3
@@ -699,9 +705,11 @@ RMSE3 <- c(RMSE.test.Zhonghe3,RMSE.test.Banqiao3, RMSE.test.Beitou3,RMSE.test.Da
            RMSE.test.Nangang3,RMSE.test.Neihu3,RMSE.test.Shilin3,RMSE.test.Songshan3,RMSE.test.Tamsui3,RMSE.test.Wanhua3 ,
            RMSE.test.Wenshan3,RMSE.test.Xindian3,RMSE.test.Xinyi3,RMSE.test.Xinzhuang3,RMSE.test.Yonghe3,
            RMSE.test.Zhongshan3 ,RMSE.test.Zhongzheng3)
+RMSE3
+#[1]  153.53489  325.43852  197.87523  446.63571 1358.80708  101.77300  163.62937  339.22229  232.00346  419.15576
+#[11]   37.41671  138.09523  166.26281  167.56174  345.27697   73.17788  117.64267  400.55748  229.54408
 
-#284.9269
 mean(RMSE3)
-
+#284.9269
 
 

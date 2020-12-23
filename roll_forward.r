@@ -7,6 +7,7 @@ for (i in 1:8){
     train <- train_data(shift, roll_forward[i])
     test <- test_data(shift, roll_forward[i])
     naive_result <- Naive.model(train, test, 30, roll_forward[i])
+    nest_a <- nest(train)
     n_ts <- nest_ts(nest(train))
     ar_result <- ARIMA.model(n_ts, test, 30, roll_forward[i])
     lm_result <- lm.model(n_ts, test, 30, roll_forward[i])

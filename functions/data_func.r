@@ -4,6 +4,8 @@ library(timetk)
 library(Metrics)
 library(lubridate)
 library(caret)
+library(zoo)
+library(sweep)
 
 ### Read data
 # Read in data
@@ -81,8 +83,8 @@ nest <- function(data){
   nest <- data%>%
     mutate(service_hour_date = ymd(service_hour_date))%>%
     group_by(admin_town_en)%>%
-    dplyr::select(-admin_town_en, sum_offline_scooter)%>%
-    nest(.key= 'dem_df')
+    dplyr::select(-admin_town_en, sum_offline_scooter)
+    #nest(.key= "dem")
   return(nest)
 }
 

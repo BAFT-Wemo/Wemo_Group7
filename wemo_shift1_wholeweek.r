@@ -7,7 +7,7 @@ library(sweep)
 library(caret) # used for avNNet
 
 # Read in data
-wemo.df <- read.csv("Downloads/Data_Jan_to_Aug.csv")
+wemo.df <- read.csv("~/BAFT/wemo_project/Data_Jan_to_Aug.csv")
 wemo.df$service_hour=as.POSIXct(paste(wemo.df$service_hour_date, wemo.df$shift), format="%Y-%m-%d %H:%M:%S")
 
 # Filter area & time (days without 3 shifts)
@@ -241,13 +241,13 @@ naive_forecast_date%>%
 nest_s1_wd <- train_s1_wd%>%
   mutate(service_hour_date = ymd(service_hour_date))%>%
   group_by(admin_town_en)%>%
-  dplyr::select(-admin_town_en, sum_offline_scooter)%>%
+  select(-admin_town_en, sum_offline_scooter)%>%
   nest(.key= 'dem_df')
 
 nest_s1 <- train_s1%>%
   mutate(service_hour_date = ymd(service_hour_date))%>%
   group_by(admin_town_en)%>%
-  dplyr::select(-admin_town_en, sum_offline_scooter)%>%
+  select(-admin_town_en, sum_offline_scooter)%>%
   nest(.key= 'dem_df')
 
 

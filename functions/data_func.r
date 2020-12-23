@@ -1,7 +1,31 @@
 library(tidyverse)
+library(forecast)
 library(timetk)
 library(Metrics)
 library(lubridate)
+library(caret)
+
+### Read data
+# Read in data
+wemo.df <- read.csv("~/BAFT/wemo_project/Data_Jan_to_Aug.csv")
+wemo.df$service_hour=as.POSIXct(paste(wemo.df$service_hour_date, wemo.df$shift), format="%Y-%m-%d %H:%M:%S")
+
+# Filter area & time (days without 3 shifts)
+wemo.df.new <- wemo.df%>%
+  filter(admin_town_zh != "三重區" & admin_town_zh != "超出營運範圍"& admin_town_zh != "泰山區"
+         & admin_town_zh != "五股區" & admin_town_zh != "土城區" & admin_town_zh != "樹林區" & 
+           admin_town_zh != "汐止區" & service_hour_date != "2020-01-31" & service_hour_date != "2020-08-31")
+
+# Derived variable (Weekend or weekday)
+wemo.df.new$weekday<-weekdays(wemo.df.new$service_hour)
+wemo.df.new$weekend_or_weekday<-ifelse(wemo.df.new$weekday=="Saturday" | wemo.df.new$weekday == "Sunday", 1, 0)
+
+# Change type to character
+wemo.df.new$service_hour_date <- as.character(wemo.df.new$service_hour_date)
+
+# Filter columns
+wemo.df.new <- wemo.df.new %>% 
+  select(admin_town_en, sum_offline_scooter, service_hour_date, shift, weekend_or_weekday)
 
 ### separate shift into three time series
 # e.g.
@@ -51,4 +75,24 @@ test_data <-function(data, date){
   test <- data%>%
     filter(service_hour_date > as.Date(date))
   return(test)
+}
+
+nest <- function(data){
+  nest <- data%>%
+    mutate(service_hour_date = ymd(service_hour_date))%>%
+    group_by(admin_town_en)%>%
+    dplyr::select(-admin_town_en, sum_offline_scooter)%>%
+    nest(.key= 'dem_df')
+  return(nest)
+}
+
+nest_ts <- function(nest){
+  nest_ts <- nest %>%
+    mutate(dem_df = 
+             map(.x = dem_df,
+                 .f = tk_ts,
+                 select = sum_offline_scooter, #select the outcome col
+                 start= c(2020,31),
+                 deltat= 1/365))
+  return(nest_ts)
 }

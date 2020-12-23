@@ -79,12 +79,12 @@ test_data <-function(data, date){
   return(test)
 }
 
-nest <- function(data){
-  nest <- data%>%
+nest_a <- function(data){
+  nest_a <- data%>%
     mutate(service_hour_date = ymd(service_hour_date))%>%
     group_by(admin_town_en)%>%
-    dplyr::select(-admin_town_en, sum_offline_scooter)
-    #nest(.key= "dem")
+    dplyr::select(-admin_town_en, sum_offline_scooter)%>%
+    nest(.key = "dem_df")
   return(nest)
 }
 

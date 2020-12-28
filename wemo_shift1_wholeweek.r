@@ -8,7 +8,7 @@ library(caret) # used for avNNet
 library(zoo)
 
 # Read in data
-wemo.df <- read.csv("~/BAFT/wemo_project/Data_Jan_to_Aug.csv")
+wemo.df <- read.csv("Downloads/Data_Jan_to_Aug.csv")
 wemo.df$service_hour=as.POSIXct(paste(wemo.df$service_hour_date, wemo.df$shift), format="%Y-%m-%d %H:%M:%S")
 
 # Filter area & time (days without 3 shifts)
@@ -104,14 +104,8 @@ naive_forecast_date%>%
   summarize(rm = rmse(sum_offline_scooter,forecast))
 
 
-
 ################### BUILD TS OBJECTS
 # CONVERT TO DATE GROUP AND THEN NEST EACH MATERIAL INTO LIST COLUMNS
-nest_s1_wd <- train_s1_wd%>%
-  mutate(service_hour_date = ymd(service_hour_date))%>%
-  group_by(admin_town_en)%>%
-  select(-admin_town_en, sum_offline_scooter)%>%
-  nest(.key= 'dem_df')
 
 nest_s1 <- train_s1%>%
   mutate(service_hour_date = ymd(service_hour_date))%>%
@@ -129,7 +123,8 @@ nest_s1_ts <- nest_s1 %>%
                select = sum_offline_scooter, #select the outcome col
                start= c(2020,31), #Jan 31th 2011 (needs a check!!!)
                #end = c(2020,210),
-               deltat= 1/365)) #daily data
+               deltat= 1/365),
+               frequency(7)) #daily data
 
 
 #####################
@@ -216,10 +211,25 @@ ar_forecast_date <- ar_forecast_date %>%
 # CHECK ACCURACY ON TEST SET. x is pred, y is actual. RMSE 232.4308
 ar_forecast_accuracy <- forecast::accuracy(ar_forecast_date$sum_offline_scooter.y, ar_forecast_date$sum_offline_scooter.x)
 
-# CHECK ACCURACY ON TRAIN SET: RMSE
-ar_models$ar_fit$fitted
-ar_forecast_accuracy_train <- forecast::accuracy(train_s1$sum_offline_scooter, ar_models$ar_fit)
-train_s1$sum_offline_scooter
+
+# join with actual values in train
+for (i in 1:19) {
+  #get fitted value
+  ar_fitted <- data.frame(ar_models[[3]][[i]]$fitted)
+  ar_fitted$admin_town_en <- ar_models$admin_town_en[i]
+  
+  # conbine fitted and actual
+  dist_train <- train_s1%>%
+    filter(admin_town_en == ar_fitted$admin_town_en[i])
+  dist_train$forecast <- ar_fitted$x
+  
+  # label your model forecasts for later visualization
+  dist_train <- dist_train %>%
+    mutate(model = "ar")
+  
+  #rbind to one dataframe
+  full_df_train <- rbind(dist_train,full_df_train)
+}
 
 
 # plot forecasts to verify nothing insane happened
@@ -261,10 +271,28 @@ lm_forecast_date <- lm_forecast_date %>%
 # CHECK ACCURACY ON TEST SET: RMSE 296.1717
 lm_forecast_accuracy <- forecast::accuracy(lm_forecast_date$sum_offline_scooter, lm_forecast_date$value) #sum_offline_scooter = actual, value = forecast value
 
-# CHECK ACCURACY ON TRAIN SET: RMSE
-lm_models$lm_fit
-lm_forecast_accuracy_train <- forecast::accuracy(train_s1$sum_offline_scooter, lm_models$lm_fit)
-train_s1$sum_offline_scooter
+# join with actual values in train
+for (i in 1:19) {
+  #get fitted value
+  lm_fitted <- data.frame(lm_models[[3]][[i]]$fitted.values)
+  lm_fitted$admin_town_en <- lm_models$admin_town_en[i]
+  print(lm_fitted)
+  
+  # conbine fitted and actual
+  dist_train <- train_s1%>%
+    filter(admin_town_en == lm_fitted$admin_town_en[i])
+  dist_train$forecast <- lm_fitted$lm_models..3....i...fitted.values
+  
+  # label your model forecasts for later visualization
+  dist_train <- dist_train %>%
+    mutate(model = "lm")
+  dist_train$forecast <- as.numeric(dist_train$forecast)
+  
+  #rbind to one dataframe
+  full_df_train <- rbind(dist_train, full_df_train)
+}
+
+
 
 
 ################# 
@@ -297,7 +325,25 @@ ets_forecast_date <- ets_forecast_date %>%
 ets_forecast_accuracy <- forecast::accuracy(ets_forecast_date$sum_offline_scooter.y, ets_forecast_date$sum_offline_scooter.x)
 
 
+# join with actual values in train
+for (i in 1:19) {
+  #get fitted value
+  ets_fitted <- data.frame(ets_models[[3]][[i]]$fitted)
+  ets_fitted$admin_town_en <- ets_models$admin_town_en[i]
+  print(ets_fitted)
+  
+  # conbine fitted and actual
+  dist_train <- train_s1%>%
+    filter(admin_town_en == ets_fitted$admin_town_en[i])
+  dist_train$forecast <- ets_fitted$y
+  
+  # label your model forecasts for later visualization
+  dist_train <- dist_train %>%
+    mutate(model = "ets")
 
+  #rbind to one dataframe
+  full_df_train <- rbind(dist_train,full_df_train)
+}
 
 ################# 
 # Seasonal NAIVE FORECAST
@@ -331,7 +377,6 @@ snaive_forecast_date <- snaive_forecast_date %>%
   mutate(model = 'snaive')
 
 
-
 ################# 
 #Nerual Net
 nn_models <- nest_s1_ts %>%
@@ -360,7 +405,6 @@ nn_forecast_date <- nn_forecast_date %>%
 
 #CHECK ACCURACY ON TEST SET. x is pred, y is actual. RMSE 261.4412
 nn_forecast_accuracy <- forecast::accuracy(nn_forecast_date$sum_offline_scooter.y, nn_forecast_date$sum_offline_scooter.x)
-
 
 
 ############ Combine all into one long DF
@@ -397,6 +441,7 @@ full_df <- full_df%>%
 full_df%>%
   ggplot(aes(service_hour_date, error, color=model, group=model))+
   geom_line()+
+  ylim(-1500,3000)+
   facet_wrap(~admin_town_en, ncol =2, scale='free_y')+
   labs(x='', title='Residuals for offline scooters in [shift1] on testing data in [whole week]')
 

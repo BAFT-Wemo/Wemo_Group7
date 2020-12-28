@@ -37,55 +37,9 @@ wemo.df.new %>%
   facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
   labs(x='', title='Time series for offline scooters')
 
-# Shifts + Whole week
+# Shift1 + Whole week
 shift_1 <- wemo.df.new%>%
   filter(shift == '00:00:00')
-# shift_2 <- wemo.df.new%>%
-#   filter(shift == '08:00:00')
-# shift_3 <- wemo.df.new%>%
-#   filter(shift == '16:00:00')
-
-# Shift 1
-shift_1_weekend <- wemo.df.new%>%
-  filter(shift == '00:00:00'&weekend_or_weekday == 1)
-shift_1_weekday <- wemo.df.new%>%
-  filter(shift == '00:00:00'&weekend_or_weekday == 0)
-
-shift_1_weekday %>%
-  group_by(admin_town_en)%>%
-  ggplot(aes(as.Date(service_hour_date), sum_offline_scooter, color=admin_town_en))+
-  geom_line(size=.4)+
-  guides(color=F)+
-  facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
-  labs(x='', title='Time series for offline scooters in 00:00 weekday')
-
-# # Shift 2
-# shift_2_weekend <- wemo.df.new%>%
-#   filter(shift == '08:00:00'&weekend_or_weekday == 1)
-# shift_2_weekday <- wemo.df.new%>%
-#   filter(shift == '08:00:00'&weekend_or_weekday == 0)
-# 
-# shift_2_weekday %>%
-#   group_by(admin_town_en)%>%
-#   ggplot(aes(as.Date(service_hour_date), sum_offline_scooter, color=admin_town_en))+
-#   geom_line(size=.4)+
-#   guides(color=F)+
-#   facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
-#   labs(x='', title='Time series for offline scooters in 08:00 weekday')
-# 
-# # Shift 3
-# shift_3_weekend <- wemo.df.new%>%
-#   filter(shift == '16:00:00'&weekend_or_weekday == 1)
-# shift_3_weekday <- wemo.df.new%>%
-#   filter(shift == '16:00:00'&weekend_or_weekday == 0)
-# 
-# shift_3_weekday %>%
-#   group_by(admin_town_en)%>%
-#   ggplot(aes(as.Date(service_hour_date), sum_offline_scooter, color=admin_town_en))+
-#   geom_line(size=.4)+
-#   guides(color=F)+
-#   facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
-#   labs(x='', title='Time series for offline scooters in 16:00 weekday')
 
 ### Create train/validation sets
 # Whole week
@@ -93,94 +47,6 @@ train_s1 <- shift_1%>%
   filter(service_hour_date <= as.Date('2020-07-31'))
 test_s1 <- shift_1%>%
   filter(service_hour_date > as.Date('2020-07-31'))
-
-# train_s2 <- shift_2%>%
-#   filter(service_hour_date <= as.Date('2020-07-31'))
-# test_s2 <- shift_2%>%
-#   filter(service_hour_date > as.Date('2020-07-31'))
-# 
-# train_s3 <- shift_3%>%
-#   filter(service_hour_date <= as.Date('2020-07-31'))
-# test_s3 <- shift_3%>%
-#   filter(service_hour_date > as.Date('2020-07-31'))
-
-
-# WEEKDAY
-train_s1_wd <- shift_1_weekday%>%
-  filter(service_hour_date <= as.Date('2020-07-31'))
-
-test_s1_wd <- shift_1_weekday%>%
-  filter(service_hour_date > as.Date('2020-07-31'))
-
-# train_s2_wd <- shift_2_weekday%>%
-#   filter(service_hour_date <= as.Date('2020-07-31'))
-# 
-# test_s2_wd <- shift_2_weekday%>%
-#   filter(service_hour_date > as.Date('2020-07-31'))
-# 
-# train_s3_wd <- shift_3_weekday%>%
-#   filter(service_hour_date <= as.Date('2020-07-31'))
-# 
-# test_s3_wd <- shift_3_weekday%>%
-#   filter(service_hour_date > as.Date('2020-07-31'))
-
-
-# WEEKEND
-train_s1_we <- shift_1_weekend%>%
-  filter(service_hour_date <= as.Date('2020-07-31'))
-
-test_s1_we <- shift_1_weekend%>%
-  filter(service_hour_date > as.Date('2020-07-31'))
-
-# train_s2_we <- shift_2_weekend%>%
-#   filter(service_hour_date <= as.Date('2020-07-31'))
-# 
-# test_s2_we <- shift_2_weekend%>%
-#   filter(service_hour_date > as.Date('2020-07-31'))
-# 
-# train_s3_we <- shift_3_weekend%>%
-#   filter(service_hour_date <= as.Date('2020-07-31'))
-# 
-# test_s3_we <- shift_3_weekend%>%
-#   filter(service_hour_date > as.Date('2020-07-31'))
-
-
-#plot original train series on weekdays
-train_s1_wd %>%
-  group_by(admin_town_en)%>%
-  ggplot(aes(as.Date(service_hour_date), sum_offline_scooter, color=admin_town_en))+
-  geom_line(size=.4)+
-  guides(color=F)+
-  facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
-  labs(x='', title='Time series for offline scooters in 00:00 on training data in weekdays')
-
-#plot original test series on weekdays
-test_s1_wd %>%
-  group_by(admin_town_en)%>%
-  ggplot(aes(as.Date(service_hour_date), sum_offline_scooter, color=admin_town_en))+
-  geom_line(size=.4)+
-  guides(color=F)+
-  facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
-  labs(x='', title='Time series for offline scooters in 00:00 on testing data in weekdays')
-
-#plot original train series on weekends
-train_s1_we %>%
-  group_by(admin_town_en)%>%
-  ggplot(aes(as.Date(service_hour_date), sum_offline_scooter, color=admin_town_en))+
-  geom_line(size=.4)+
-  guides(color=F)+
-  facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
-  labs(x='', title='Time series for offline scooters in 00:00 on training data in weekends')
-
-#plot original test series on weekends
-test_s1_we %>%
-  group_by(admin_town_en)%>%
-  ggplot(aes(as.Date(service_hour_date), sum_offline_scooter, color=admin_town_en))+
-  geom_line(size=.4)+
-  guides(color=F)+
-  facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
-  labs(x='', title='Time series for offline scooters in 00:00 on testing data in weekends')
-
 
 #####################
 # Naive
@@ -265,6 +131,7 @@ nest_s1_ts <- nest_s1 %>%
                #end = c(2020,210),
                deltat= 1/365)) #daily data
 
+
 #####################
 # MOVING AVERAGE
 mv_models <- nest_s1_ts %>%
@@ -293,7 +160,29 @@ mv_forecast_date <- mv_forecast_date %>%
 
 # CHECK ACCURACY ON TEST SET: RMSE 236.952
 mv_forecast_accuracy <- forecast::accuracy(mv_forecast_date$sum_offline_scooter.y, mv_forecast_date$sum_offline_scooter.x)
+mv_forecast_date$sum_offline_scooter.y
 
+# join with actual values in train
+full_df_train <- data.frame()
+for (i in 1:19) {
+  #get fitted value
+  mv_fitted <- data.frame(mv_models$mv_fit[[i]])
+  mv_fitted$admin_town_en <- mv_models$admin_town_en[i]
+  mv_fitted
+  
+  # conbine fitted and actual
+  dist_train <- train_s1%>%
+    filter(admin_town_en == mv_fitted$admin_town_en[i])
+  dist_train$forecast <- NA
+  dist_train[12:182,]$forecast <- mv_fitted$sum_offline_scooter
+  
+  # label your model forecasts for later visualization
+  dist_train <- dist_train %>%
+    mutate(model = "mv")
+  
+  #rbind to one dataframe
+  full_df_train <- rbind(dist_train,full_df_train)
+}
 
 #####################
 # AUTOARIMA. 
@@ -327,12 +216,19 @@ ar_forecast_date <- ar_forecast_date %>%
 # CHECK ACCURACY ON TEST SET. x is pred, y is actual. RMSE 232.4308
 ar_forecast_accuracy <- forecast::accuracy(ar_forecast_date$sum_offline_scooter.y, ar_forecast_date$sum_offline_scooter.x)
 
+# CHECK ACCURACY ON TRAIN SET: RMSE
+ar_models$ar_fit$fitted
+ar_forecast_accuracy_train <- forecast::accuracy(train_s1$sum_offline_scooter, ar_models$ar_fit)
+train_s1$sum_offline_scooter
+
+
 # plot forecasts to verify nothing insane happened
 ar_forecast %>%
   group_by(admin_town_en)%>%
   ggplot(aes(service_hour_date, sum_offline_scooter, color=admin_town_en, group=admin_town_en))+
   geom_line(size=1)+
   labs(x='', title='ARIMA plot for [shift1] in [whole week]')
+
 
 
 #####################
@@ -365,7 +261,10 @@ lm_forecast_date <- lm_forecast_date %>%
 # CHECK ACCURACY ON TEST SET: RMSE 296.1717
 lm_forecast_accuracy <- forecast::accuracy(lm_forecast_date$sum_offline_scooter, lm_forecast_date$value) #sum_offline_scooter = actual, value = forecast value
 
-
+# CHECK ACCURACY ON TRAIN SET: RMSE
+lm_models$lm_fit
+lm_forecast_accuracy_train <- forecast::accuracy(train_s1$sum_offline_scooter, lm_models$lm_fit)
+train_s1$sum_offline_scooter
 
 
 ################# 

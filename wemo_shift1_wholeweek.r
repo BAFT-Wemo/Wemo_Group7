@@ -5,9 +5,10 @@ library(Metrics)
 library(lubridate)
 library(sweep)
 library(caret) # used for avNNet
+library(zoo)
 
 # Read in data
-wemo.df <- read.csv("Downloads/Data_Jan_to_Aug.csv")
+wemo.df <- read.csv("~/BAFT/wemo_project/Data_Jan_to_Aug.csv")
 wemo.df$service_hour=as.POSIXct(paste(wemo.df$service_hour_date, wemo.df$shift), format="%Y-%m-%d %H:%M:%S")
 
 # Filter area & time (days without 3 shifts)
@@ -36,55 +37,9 @@ wemo.df.new %>%
   facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
   labs(x='', title='Time series for offline scooters')
 
-# Shifts + Whole week
+# Shift1 + Whole week
 shift_1 <- wemo.df.new%>%
   filter(shift == '00:00:00')
-# shift_2 <- wemo.df.new%>%
-#   filter(shift == '08:00:00')
-# shift_3 <- wemo.df.new%>%
-#   filter(shift == '16:00:00')
-
-# Shift 1
-shift_1_weekend <- wemo.df.new%>%
-  filter(shift == '00:00:00'&weekend_or_weekday == 1)
-shift_1_weekday <- wemo.df.new%>%
-  filter(shift == '00:00:00'&weekend_or_weekday == 0)
-
-shift_1_weekday %>%
-  group_by(admin_town_en)%>%
-  ggplot(aes(as.Date(service_hour_date), sum_offline_scooter, color=admin_town_en))+
-  geom_line(size=.4)+
-  guides(color=F)+
-  facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
-  labs(x='', title='Time series for offline scooters in 00:00 weekday')
-
-# # Shift 2
-# shift_2_weekend <- wemo.df.new%>%
-#   filter(shift == '08:00:00'&weekend_or_weekday == 1)
-# shift_2_weekday <- wemo.df.new%>%
-#   filter(shift == '08:00:00'&weekend_or_weekday == 0)
-# 
-# shift_2_weekday %>%
-#   group_by(admin_town_en)%>%
-#   ggplot(aes(as.Date(service_hour_date), sum_offline_scooter, color=admin_town_en))+
-#   geom_line(size=.4)+
-#   guides(color=F)+
-#   facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
-#   labs(x='', title='Time series for offline scooters in 08:00 weekday')
-# 
-# # Shift 3
-# shift_3_weekend <- wemo.df.new%>%
-#   filter(shift == '16:00:00'&weekend_or_weekday == 1)
-# shift_3_weekday <- wemo.df.new%>%
-#   filter(shift == '16:00:00'&weekend_or_weekday == 0)
-# 
-# shift_3_weekday %>%
-#   group_by(admin_town_en)%>%
-#   ggplot(aes(as.Date(service_hour_date), sum_offline_scooter, color=admin_town_en))+
-#   geom_line(size=.4)+
-#   guides(color=F)+
-#   facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
-#   labs(x='', title='Time series for offline scooters in 16:00 weekday')
 
 ### Create train/validation sets
 # Whole week
@@ -92,94 +47,6 @@ train_s1 <- shift_1%>%
   filter(service_hour_date <= as.Date('2020-07-31'))
 test_s1 <- shift_1%>%
   filter(service_hour_date > as.Date('2020-07-31'))
-
-# train_s2 <- shift_2%>%
-#   filter(service_hour_date <= as.Date('2020-07-31'))
-# test_s2 <- shift_2%>%
-#   filter(service_hour_date > as.Date('2020-07-31'))
-# 
-# train_s3 <- shift_3%>%
-#   filter(service_hour_date <= as.Date('2020-07-31'))
-# test_s3 <- shift_3%>%
-#   filter(service_hour_date > as.Date('2020-07-31'))
-
-
-# WEEKDAY
-train_s1_wd <- shift_1_weekday%>%
-  filter(service_hour_date <= as.Date('2020-07-31'))
-
-test_s1_wd <- shift_1_weekday%>%
-  filter(service_hour_date > as.Date('2020-07-31'))
-
-# train_s2_wd <- shift_2_weekday%>%
-#   filter(service_hour_date <= as.Date('2020-07-31'))
-# 
-# test_s2_wd <- shift_2_weekday%>%
-#   filter(service_hour_date > as.Date('2020-07-31'))
-# 
-# train_s3_wd <- shift_3_weekday%>%
-#   filter(service_hour_date <= as.Date('2020-07-31'))
-# 
-# test_s3_wd <- shift_3_weekday%>%
-#   filter(service_hour_date > as.Date('2020-07-31'))
-
-
-# WEEKEND
-train_s1_we <- shift_1_weekend%>%
-  filter(service_hour_date <= as.Date('2020-07-31'))
-
-test_s1_we <- shift_1_weekend%>%
-  filter(service_hour_date > as.Date('2020-07-31'))
-
-# train_s2_we <- shift_2_weekend%>%
-#   filter(service_hour_date <= as.Date('2020-07-31'))
-# 
-# test_s2_we <- shift_2_weekend%>%
-#   filter(service_hour_date > as.Date('2020-07-31'))
-# 
-# train_s3_we <- shift_3_weekend%>%
-#   filter(service_hour_date <= as.Date('2020-07-31'))
-# 
-# test_s3_we <- shift_3_weekend%>%
-#   filter(service_hour_date > as.Date('2020-07-31'))
-
-
-#plot original train series on weekdays
-train_s1_wd %>%
-  group_by(admin_town_en)%>%
-  ggplot(aes(as.Date(service_hour_date), sum_offline_scooter, color=admin_town_en))+
-  geom_line(size=.4)+
-  guides(color=F)+
-  facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
-  labs(x='', title='Time series for offline scooters in 00:00 on training data in weekdays')
-
-#plot original test series on weekdays
-test_s1_wd %>%
-  group_by(admin_town_en)%>%
-  ggplot(aes(as.Date(service_hour_date), sum_offline_scooter, color=admin_town_en))+
-  geom_line(size=.4)+
-  guides(color=F)+
-  facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
-  labs(x='', title='Time series for offline scooters in 00:00 on testing data in weekdays')
-
-#plot original train series on weekends
-train_s1_we %>%
-  group_by(admin_town_en)%>%
-  ggplot(aes(as.Date(service_hour_date), sum_offline_scooter, color=admin_town_en))+
-  geom_line(size=.4)+
-  guides(color=F)+
-  facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
-  labs(x='', title='Time series for offline scooters in 00:00 on training data in weekends')
-
-#plot original test series on weekends
-test_s1_we %>%
-  group_by(admin_town_en)%>%
-  ggplot(aes(as.Date(service_hour_date), sum_offline_scooter, color=admin_town_en))+
-  geom_line(size=.4)+
-  guides(color=F)+
-  facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
-  labs(x='', title='Time series for offline scooters in 00:00 on testing data in weekends')
-
 
 #####################
 # Naive
@@ -198,11 +65,11 @@ naive_towns_s1 <- train_s1%>%
 
 #create a 'naive df' of final value repeated 30 days forward
 naive_df_s1 <- data.frame(forecast = rep(naive_pred_s1, 30),
-                       admin_town_en = rep(naive_towns_s1, 30))
+                          admin_town_en = rep(naive_towns_s1, 30))
 naive_s1 <- naive_df_s1%>%
   group_by(admin_town_en)%>%
   mutate(service_hour_date = seq.Date(as.Date('2020-08-01'),
-                         by='day', length.out = 30))
+                                      by='day', length.out = 30))
 
 naive_s1$service_hour_date <- as.character(naive_s1$service_hour_date)
 
@@ -228,6 +95,8 @@ naive_forecast_date%>%
 
 #CHECK ACCURACY ON TEST SET: RMSE 231.9899
 naive_forecast_accuracy <- forecast::accuracy(naive_forecast_date$forecast, naive_forecast_date$sum_offline_scooter)
+naive_forecast_date$forecast
+
 
 # Calculate each RMSE
 naive_forecast_date%>%
@@ -241,13 +110,13 @@ naive_forecast_date%>%
 nest_s1_wd <- train_s1_wd%>%
   mutate(service_hour_date = ymd(service_hour_date))%>%
   group_by(admin_town_en)%>%
-  dplyr::select(-admin_town_en, sum_offline_scooter)%>%
+  select(-admin_town_en, sum_offline_scooter)%>%
   nest(.key= 'dem_df')
 
 nest_s1 <- train_s1%>%
   mutate(service_hour_date = ymd(service_hour_date))%>%
   group_by(admin_town_en)%>%
-  dplyr::select(-admin_town_en, sum_offline_scooter)%>%
+  select(-admin_town_en, sum_offline_scooter)%>%
   nest(.key= 'dem_df')
 
 
@@ -263,14 +132,63 @@ nest_s1_ts <- nest_s1 %>%
                deltat= 1/365)) #daily data
 
 
+#####################
+# MOVING AVERAGE
+mv_models <- nest_s1_ts %>%
+  mutate(mv_fit = map(.x=dem_df,
+                      .f = function(x) rollmean(x, k = 12, align = "right")))
 
+mv_forecast <- mv_models %>%
+  mutate(fcast = map(mv_fit,
+                     forecast,
+                     h=30))%>%
+  mutate(swp = map(fcast, sw_sweep, fitted=FALSE))%>%
+  unnest(swp)%>%
+  filter(key == 'forecast')%>%
+  mutate(service_hour_date = seq(from = as.Date('2020-08-01'), by='day', length.out = 30))%>%
+  select(admin_town_en, service_hour_date, sum_offline_scooter)
+
+mv_forecast$service_hour_date <- as.character(mv_forecast$service_hour_date)
+
+# join with actual values in validation
+mv_forecast_date <- mv_forecast %>%
+  left_join(test_s1, by = c('service_hour_date'='service_hour_date', 'admin_town_en'))
+
+# label your model forecasts for later visualization
+mv_forecast_date <- mv_forecast_date %>%
+  mutate(model = 'mv')
+
+# CHECK ACCURACY ON TEST SET: RMSE 236.952
+mv_forecast_accuracy <- forecast::accuracy(mv_forecast_date$sum_offline_scooter.y, mv_forecast_date$sum_offline_scooter.x)
+mv_forecast_date$sum_offline_scooter.y
+
+# join with actual values in train
+full_df_train <- data.frame()
+for (i in 1:19) {
+  #get fitted value
+  mv_fitted <- data.frame(mv_models$mv_fit[[i]])
+  mv_fitted$admin_town_en <- mv_models$admin_town_en[i]
+  mv_fitted
+  
+  # conbine fitted and actual
+  dist_train <- train_s1%>%
+    filter(admin_town_en == mv_fitted$admin_town_en[i])
+  dist_train$forecast <- NA
+  dist_train[12:182,]$forecast <- mv_fitted$sum_offline_scooter
+  
+  # label your model forecasts for later visualization
+  dist_train <- dist_train %>%
+    mutate(model = "mv")
+  
+  #rbind to one dataframe
+  full_df_train <- rbind(dist_train,full_df_train)
+}
 
 #####################
 # AUTOARIMA. 
 ar_models <- nest_s1_ts %>%
   mutate(ar_fit = map(.x=dem_df,
                       .f = auto.arima))
-
 
 ### TIDYING UP
 # FORECAST in testing for 30 days
@@ -285,7 +203,7 @@ ar_forecast <- ar_models %>%
   select(admin_town_en, service_hour_date, sum_offline_scooter)
 
 ar_forecast$service_hour_date <- as.character(ar_forecast$service_hour_date)
-  
+
 # join with actual values in validation
 ar_forecast_date <- ar_forecast %>%
   left_join(test_s1, by = c('service_hour_date'='service_hour_date', 'admin_town_en'))
@@ -297,6 +215,12 @@ ar_forecast_date <- ar_forecast_date %>%
 
 # CHECK ACCURACY ON TEST SET. x is pred, y is actual. RMSE 232.4308
 ar_forecast_accuracy <- forecast::accuracy(ar_forecast_date$sum_offline_scooter.y, ar_forecast_date$sum_offline_scooter.x)
+
+# CHECK ACCURACY ON TRAIN SET: RMSE
+ar_models$ar_fit$fitted
+ar_forecast_accuracy_train <- forecast::accuracy(train_s1$sum_offline_scooter, ar_models$ar_fit)
+train_s1$sum_offline_scooter
+
 
 # plot forecasts to verify nothing insane happened
 ar_forecast %>%
@@ -337,7 +261,10 @@ lm_forecast_date <- lm_forecast_date %>%
 # CHECK ACCURACY ON TEST SET: RMSE 296.1717
 lm_forecast_accuracy <- forecast::accuracy(lm_forecast_date$sum_offline_scooter, lm_forecast_date$value) #sum_offline_scooter = actual, value = forecast value
 
-
+# CHECK ACCURACY ON TRAIN SET: RMSE
+lm_models$lm_fit
+lm_forecast_accuracy_train <- forecast::accuracy(train_s1$sum_offline_scooter, lm_models$lm_fit)
+train_s1$sum_offline_scooter
 
 
 ################# 
@@ -376,7 +303,7 @@ ets_forecast_accuracy <- forecast::accuracy(ets_forecast_date$sum_offline_scoote
 # Seasonal NAIVE FORECAST
 snaive_models <- nest_s1_ts %>%
   mutate(snaive_fit = map(.x=dem_df,
-                         .f = snaive))
+                          .f = snaive))
 
 snaive_forecast <- snaive_models %>%
   mutate(fcast = map(snaive_fit,
@@ -405,18 +332,35 @@ snaive_forecast_date <- snaive_forecast_date %>%
 
 
 
+################# 
+#Nerual Net
+nn_models <- nest_s1_ts %>%
+  mutate(nn_fit = map(.x=dem_df,
+                      .f = function(x) nnetar(x, repeats = 5, size=10)))
 
-# # Nerual Net
-# # Neural net 1: avNNet = Neural Networks Using Model Averaging
-# nn <- avNNet(TargetVariable ~., data = train, repeats = 5, size=10) # #units in the hidden layer
-# summary(nn)
-# nn.forecast <- predict(nn, newdata = valid)
-# 
-# # Neural net 2: nnetar
-# nn1 <- nnetar(train$TargetVariable, xreg=train[,1:8], repeats = 5, size=10)
-# summary(nn1)
-# confusionMatrix(as.factor(ifelse(nn1$fitted>0.5,1,0)), as.factor(train$TargetVariable), positive="1")
-# nn1.forecast <- predict(nn1, newdata = valid, xreg=valid[,1:8])
+nn_forecast <- nn_models %>%
+  mutate(fcast = map(nn_fit,
+                     forecast,
+                     h=30))%>%
+  mutate(swp = map(fcast, sw_sweep, fitted=FALSE))%>%
+  unnest(swp)%>%
+  filter(key == 'forecast')%>%
+  mutate(service_hour_date = seq(from = as.Date('2020-08-01'), by='day', length.out = 30))%>%
+  select(admin_town_en, service_hour_date, sum_offline_scooter)
+
+nn_forecast$service_hour_date <- as.character(nn_forecast$service_hour_date)
+
+#join with actual values in validation
+nn_forecast_date <- nn_forecast %>%
+  left_join(test_s1, by = c('service_hour_date'='service_hour_date', 'admin_town_en'))
+
+#label your model forecasts for later visualization
+nn_forecast_date <- nn_forecast_date %>%
+  mutate(model = 'nn')
+
+#CHECK ACCURACY ON TEST SET. x is pred, y is actual. RMSE 261.4412
+nn_forecast_accuracy <- forecast::accuracy(nn_forecast_date$sum_offline_scooter.y, nn_forecast_date$sum_offline_scooter.x)
+
 
 
 ############ Combine all into one long DF
@@ -442,7 +386,9 @@ full_df <- rbind(lm_forecast_date,
                  ar_forecast_date,
                  ets_forecast_date,
                  snaive_forecast_date,
-                 naive_forecast_date)
+                 naive_forecast_date,
+                 nn_forecast_date,
+                 mv_forecast_date)
 
 full_df <- full_df%>%
   mutate(error = sum_offline_scooter.x - sum_offline_scooter.y)
@@ -457,7 +403,10 @@ full_df%>%
 # Print out accuracy of each model
 naive_forecast_accuracy
 snaive_forecast_accuracy
-ar_forecast_accuracy
+mv_forecast_accuracy
 lm_forecast_accuracy
 ets_forecast_accuracy
+ar_forecast_accuracy
+nn_forecast_accuracy
+
 

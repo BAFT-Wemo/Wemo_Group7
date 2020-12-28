@@ -4,6 +4,8 @@ library(timetk)
 library(Metrics)
 library(lubridate)
 library(caret)
+library(zoo)
+library(sweep)
 
 ### Read data
 # Read in data
@@ -65,25 +67,26 @@ plot.ts <- function(data, time){
 roll_forward <- c("2020-08-02", "2020-07-26", "2020-07-19", "2020-07-12", 
                   "2020-07-05", "2020-06-28", "2020-06-21", "2020-06-14")
 
+
 train_data <-function(data, date){
   train <- data%>%
-    filter(service_hour_date <= as.Date(date))
+    filter(service_hour_date < as.Date(date))
   return(train)
 }
 
 test_data <-function(data, date){
   test <- data%>%
-    filter(service_hour_date > as.Date(date))
+    filter(service_hour_date >= as.Date(date))
   return(test)
 }
 
-nest <- function(data){
-  nest <- data%>%
+nest_a <- function(data){
+  nest_obj <- data%>%
     mutate(service_hour_date = ymd(service_hour_date))%>%
     group_by(admin_town_en)%>%
     dplyr::select(-admin_town_en, sum_offline_scooter)%>%
-    nest(.key= 'dem_df')
-  return(nest)
+    tidyr::nest(.key = "dem_df")
+  return(nest_obj)
 }
 
 nest_ts <- function(nest){

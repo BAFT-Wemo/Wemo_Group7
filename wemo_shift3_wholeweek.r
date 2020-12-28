@@ -4,6 +4,8 @@ library(timetk)
 library(Metrics)
 library(lubridate)
 library(sweep)
+library(caret) # used for avNNet
+library(zoo)
 
 # Read in data
 wemo.df <- read.csv("Downloads/Data_Jan_to_Aug.csv")
@@ -263,6 +265,36 @@ nest_s3_ts <- nest_s3 %>%
 
 
 
+#####################
+# MOVING AVERAGE
+mv_models <- nest_s3_ts %>%
+  mutate(mv_fit = map(.x=dem_df,
+                      .f = function(x) rollmean(x, k = 12, align = "right")))
+
+mv_forecast <- mv_models %>%
+  mutate(fcast = map(mv_fit,
+                     forecast,
+                     h=30))%>%
+  mutate(swp = map(fcast, sw_sweep, fitted=FALSE))%>%
+  unnest(swp)%>%
+  filter(key == 'forecast')%>%
+  mutate(service_hour_date = seq(from = as.Date('2020-08-01'), by='day', length.out = 30))%>%
+  select(admin_town_en, service_hour_date, sum_offline_scooter)
+
+mv_forecast$service_hour_date <- as.character(mv_forecast$service_hour_date)
+
+# join with actual values in validation
+mv_forecast_date <- mv_forecast %>%
+  left_join(test_s3, by = c('service_hour_date'='service_hour_date', 'admin_town_en'))
+
+# label your model forecasts for later visualization
+mv_forecast_date <- mv_forecast_date %>%
+  mutate(model = 'mv')
+
+# CHECK ACCURACY ON TEST SET: RMSE 236.952
+mv_forecast_accuracy <- forecast::accuracy(mv_forecast_date$sum_offline_scooter.y, mv_forecast_date$sum_offline_scooter.x)
+
+
 
 #####################
 # AUTOARIMA. 
@@ -404,6 +436,36 @@ snaive_forecast_date <- snaive_forecast_date %>%
   mutate(model = 'snaive')
 
 
+################# 
+#Nerual Net
+nn_models <- nest_s3_ts %>%
+  mutate(nn_fit = map(.x=dem_df,
+                      .f = function(x) nnetar(x, repeats = 5, size=10)))
+
+nn_forecast <- nn_models %>%
+  mutate(fcast = map(nn_fit,
+                     forecast,
+                     h=30))%>%
+  mutate(swp = map(fcast, sw_sweep, fitted=FALSE))%>%
+  unnest(swp)%>%
+  filter(key == 'forecast')%>%
+  mutate(service_hour_date = seq(from = as.Date('2020-08-01'), by='day', length.out = 30))%>%
+  select(admin_town_en, service_hour_date, sum_offline_scooter)
+
+nn_forecast$service_hour_date <- as.character(nn_forecast$service_hour_date)
+
+#join with actual values in validation
+nn_forecast_date <- nn_forecast %>%
+  left_join(test_s3, by = c('service_hour_date'='service_hour_date', 'admin_town_en'))
+
+#label your model forecasts for later visualization
+nn_forecast_date <- nn_forecast_date %>%
+  mutate(model = 'nn')
+
+#CHECK ACCURACY ON TEST SET. x is pred, y is actual. RMSE 
+nn_forecast_accuracy <- forecast::accuracy(nn_forecast_date$sum_offline_scooter.y, nn_forecast_date$sum_offline_scooter.x)
+
+
 
 ############ Combine all into one long DF
 # LOOK AT PREDICTION ERROR FOR ALL MODELS
@@ -428,7 +490,9 @@ full_df <- rbind(lm_forecast_date,
                  ar_forecast_date,
                  ets_forecast_date,
                  snaive_forecast_date,
-                 naive_forecast_date)
+                 naive_forecast_date,
+                 mv_forecast_date,
+                 nn_forecast_date)
 
 full_df <- full_df%>%
   mutate(error = sum_offline_scooter.x - sum_offline_scooter.y)
@@ -443,7 +507,10 @@ full_df%>%
 # Print out accuracy of each model
 naive_forecast_accuracy
 snaive_forecast_accuracy
-ar_forecast_accuracy
+mv_forecast_accuracy
 lm_forecast_accuracy
 ets_forecast_accuracy
+ar_forecast_accuracy
+nn_forecast_accuracy
+
 

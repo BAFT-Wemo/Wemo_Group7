@@ -8,10 +8,10 @@ library(caret)
 
 ### Calculate RMSE for each districts
 
-dist.rmse <- function(model_error){
-  model_rmse <- model_error%>%
-    group_by(admin_town_en)%>%
-    summarize(rm = rmse(sum_offline_scooter,forecast))
+dist.rmse <- function(model_result){
+  model_rmse <- model_result%>%
+    group_by(admin_town_en, model, roll_forward)%>%
+    summarize(result.rmse = rmse(sum_offline_scooter.y,sum_offline_scooter.x), .groups = 'drop')
   return(model_rmse)
 }
 
@@ -62,7 +62,7 @@ Naive.model <- function(train_data, test_data, repeated_day, last_naive_day){
            sum_offline_scooter.y = sum_offline_scooter,
            value = NULL,
            sum_offline_scooter = NULL)
-  
+
   return(naive_forecast_date)
 }
 
@@ -180,7 +180,7 @@ ets.model <- function(nest_ts, test_data, repeated_day, last_day){
   
   #join with actual values in validation
   ets_forecast_date <- ets_forecast %>%
-    left_join(test_s1, by = c('service_hour_date'='service_hour_date', 'admin_town_en'))
+    left_join(test_data, by = c('service_hour_date'='service_hour_date', 'admin_town_en'))
   
   #label your model forecasts for later visualization
   ets_forecast_date <- ets_forecast_date %>%
@@ -209,7 +209,7 @@ snaive.model <- function(nest_ts, test_data, repeated_day, last_day){
   snaive_forecast$service_hour_date <- as.character(snaive_forecast$service_hour_date)
   # join with actual values in validation
   snaive_forecast_date <- snaive_forecast %>%
-    left_join(test_s1, by = c('service_hour_date'='service_hour_date', 'admin_town_en'))
+    left_join(test_data, by = c('service_hour_date'='service_hour_date', 'admin_town_en'))
   
   # CHECK ACCURACY ON TEST SET. x is pred, y is actual. RMSE 363.9651
   snaive_forecast_accuracy <- forecast::accuracy(snaive_forecast_date$sum_offline_scooter.y, snaive_forecast_date$sum_offline_scooter.x)

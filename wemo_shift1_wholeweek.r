@@ -380,9 +380,9 @@ dist_valid_snaive <- data.frame(admin_town_en = test_s1$admin_town_en,
 
 dist_valid_snaive$sum_offline_scooter[8:570] <- test_s1$sum_offline_scooter[0:563]
 
-dist_valid_snaive <- dist_valid_snaive%>%
-  group_by(admin_town_en)%>%
-  mutate(sum_offline_scooter = ifelse(as.Date(service_hour_date) < as.Date('2020-08-08'),  NA, sum_offline_scooter ))
+# dist_valid_snaive <- dist_valid_snaive%>%
+#   group_by(admin_town_en)%>%
+#   mutate(sum_offline_scooter = ifelse(as.Date(service_hour_date) < as.Date('2020-08-08'),  NA, sum_offline_scooter ))
 
 # label your model forecasts for later visualization
 dist_valid_snaive <- dist_valid_snaive %>%

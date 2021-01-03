@@ -1,10 +1,11 @@
 source("functions/data_func.r")
 source("functions/model_func.r")
+source("functions/ts_plot.r")
 
 results_rmse <- data.frame()
 
-for (j in 1:3){
-  for (i in 1:8){
+for (j in 1:2){
+  for (i in 1:1){
     shift <- separate_shift(wemo.df.new, shift.time[j])
     extra <- exter.df(shift, rain_df, holiday_df)
     train <- train_data(extra, roll_forward[i])
@@ -33,73 +34,14 @@ for (j in 1:3){
 
     results_rmse <- rbind(results_rmse, dist.rmse(full_df_forecast))
   }
-  print(rmse_boxplot(results_rmse, shift.time[i]))
-  print(error_boxplot(full_df_forecast, shift.time[i]))
-}
-
-rmse_boxplot <- function(rmse_data, shift_time){
-  plot <- rmse_data %>%
-    filter(shift == shift_time) %>%
+  print(results_rmse %>%
+    filter(shift == shift.time[i]) %>%
     ggplot(aes(model, result.rmse,fill = model))+
     geom_boxplot()+
     facet_wrap(~admin_town_en)+
-    labs(title = paste("rmse",shift_time))
-  return(plot)
+    labs(title = paste("rmse",shift.time[i])))
 }
 
-error_boxplot <- function(error_data, shift_time){
-  plot <- error_data %>%
-    filter(shift == shift_time) %>%
-    ggplot(aes(model, error,fill = model))+
-    geom_boxplot()+
-    facet_wrap(~admin_town_en)+
-    labs(title = paste("error", shift_time))
-  return(plot)
-}
 
-results_rmse %>%
-  filter(shift == shift.time[1]) %>%
-  ggplot(aes(model, result.rmse,fill = model))+
-  geom_boxplot()+
-  facet_wrap(~admin_town_en)+
-  labs(title = shift.time[1])
 
-results_rmse %>%
-  filter(shift == shift.time[2]) %>%
-  ggplot(aes(model, result.rmse,fill = model))+
-  geom_boxplot()+
-  facet_wrap(~admin_town_en)+
-  labs(title = shift.time[2])
-
-results_rmse %>%
-  filter(shift == shift.time[3]) %>%
-  ggplot(aes(model, result.rmse,fill = model))+
-  geom_boxplot()+
-  facet_wrap(~admin_town_en)+
-  labs(title = shift.time[3])
-
-full_df_forecast %>%
-  filter(shift == shift.time[1]) %>%
-  ggplot(aes(model, error,fill = model))+
-  geom_boxplot()+
-  facet_wrap(~admin_town_en)+
-  #labs(title = paste("error", shift.time[1]))
-
-full_df_forecast %>%
-  filter(shift == shift.time[2]) %>%
-  ggplot(aes(model, error,fill = model))+
-  geom_boxplot()+
-  facet_wrap(~admin_town_en)+
-  labs(title = paste("error", shift.time[2]))
-
-full_df_forecast %>%
-  filter(shift == shift.time[3]) %>%
-  ggplot(aes(model, error,fill = model))+
-  geom_boxplot()+
-  facet_wrap(~admin_town_en)+
-  labs(title = paste("error", shift.time[3]))
-
-model_name <- c("naive", "snaive", "ets", "lm", "arima", "mv", "nn")
-
-ar_model_train
 

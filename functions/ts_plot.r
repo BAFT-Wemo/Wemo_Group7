@@ -26,11 +26,14 @@ plot.forecast <- function(full_data){
   plot <- full_data%>%
     ggplot(aes(service_hour_date,sum_offline_scooter.x, color=model, group=model))+
     geom_line()+
+    geom_line(aes(service_hour_date,sum_offline_scooter.y, color="actual", group=model))+
     facet_wrap(~admin_town_en, ncol =2, scale='free_y')+
     labs(x='', title='Residuals for offline scooters in [shift1] on testing data in [whole week]')
   #plot <- plot + geom_line(aes(x=service_hour_date, y=sum_offline_scooter), data = df)
   return(plot)
 }
+
+plot.forecast(full_df)
 
 
 plot.residual <- function(full_data){

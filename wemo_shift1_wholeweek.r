@@ -147,7 +147,8 @@ nest_s1_ts <- nest_s1 %>%
                select = sum_offline_scooter, #select the outcome col
                start= c(2020,31), #Jan 31th 2011 (needs a check!!!)
                #end = c(2020,210),
-               deltat= 1/365)) #daily data
+               deltat= 1/365,
+               freq = 7)) #daily data
 
 
 #####################
@@ -249,7 +250,7 @@ for (i in 1:19) {
   
   # label your model forecasts for later visualization
   dist_train <- dist_train %>%
-    mutate(model = "ar")
+    mutate(model = "arima")
   
   #rbind to one dataframe
   full_df_train <- rbind(dist_train,full_df_train)
@@ -270,7 +271,7 @@ ar_forecast %>%
 ## FORECAST in testing for 30 days
 lm_models <- nest_s1_ts %>%
   mutate(lm_fit = map(.x=dem_df,
-                      .f = function(x) tslm(x ~ trend)))
+                      .f = function(x) tslm(x ~ trend + season)))
 
 lm_forecast <- lm_models %>%
   mutate(fcast = map(lm_fit,
@@ -455,6 +456,33 @@ nn_forecast_date <- nn_forecast_date %>%
 
 #CHECK ACCURACY ON TEST SET. x is pred, y is actual. RMSE 261.4412
 nn_forecast_accuracy <- forecast::accuracy(nn_forecast_date$sum_offline_scooter.y, nn_forecast_date$sum_offline_scooter.x)
+
+
+# join with actual values in train
+for (i in 1:19) {
+  #get fitted value
+  nn_fitted <- data.frame(nn_models[[3]][[i]][["fitted"]])
+  nn_fitted$admin_town_en <- nn_models$admin_town_en[i]
+  nn_fitted
+  # conbine fitted and actual
+  dist_train <- train_s1%>%
+    filter(admin_town_en == nn_fitted$admin_town_en[i])
+  dist_train$forecast <- nn_fitted[1]
+  
+  # label your model forecasts for later visualization
+  dist_train <- dist_train %>%
+    mutate(model = "nn")
+  
+  class(dist_train)
+  class(full_df_train)
+  dist_train$forecast <- data.matrix(dist_train$forecast)
+  class(dist_train$forecast)
+  class(dist_train$sum_offline_scooter)
+  
+  #rbind to one dataframe
+  full_df_train <- rbind(dist_train,full_df_train)
+}
+
 
 
 ############ Combine all into one long DF

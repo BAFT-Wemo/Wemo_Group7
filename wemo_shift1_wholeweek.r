@@ -14,8 +14,10 @@ wemo.df$service_hour=as.POSIXct(paste(wemo.df$service_hour_date, wemo.df$shift),
 # Filter area & time (days without 3 shifts)
 wemo.df.new <- wemo.df%>%
   filter(admin_town_zh != "三重區" & admin_town_zh != "超出營運範圍"& admin_town_zh != "泰山區"
-         & admin_town_zh != "五股區" & admin_town_zh != "土城區" & admin_town_zh != "樹林區" & 
+         & admin_town_zh != "五股區" & admin_town_zh != "土城區" & admin_town_zh != "樹林區" &
            admin_town_zh != "汐止區" & service_hour_date != "2020-01-31" & service_hour_date != "2020-08-31")
+
+
 
 # Derived variable (Weekend or weekday)
 wemo.df.new$weekday<-weekdays(wemo.df.new$service_hour)
@@ -147,7 +149,8 @@ nest_s1_ts <- nest_s1 %>%
                select = sum_offline_scooter, #select the outcome col
                start= c(2020,31), #Jan 31th 2011 (needs a check!!!)
                #end = c(2020,210),
-               deltat= 1/365)) #daily data
+               deltat= 1/365,
+               freq = 7)) #daily data
 
 
 #####################
@@ -249,7 +252,7 @@ for (i in 1:19) {
   
   # label your model forecasts for later visualization
   dist_train <- dist_train %>%
-    mutate(model = "ar")
+    mutate(model = "arima")
   
   #rbind to one dataframe
   full_df_train <- rbind(dist_train,full_df_train)
@@ -270,7 +273,7 @@ ar_forecast %>%
 ## FORECAST in testing for 30 days
 lm_models <- nest_s1_ts %>%
   mutate(lm_fit = map(.x=dem_df,
-                      .f = function(x) tslm(x ~ trend)))
+                      .f = function(x) tslm(x ~ trend+season)))
 
 lm_forecast <- lm_models %>%
   mutate(fcast = map(lm_fit,
@@ -529,6 +532,10 @@ full_df_train <- full_df_train[,-5]
 #rbind
 train_valid_df <- rbind(full_df_train, full_df)
 
+train_valid_df  <- train_valid_df %>%
+  filter(admin_town_en == "Da’an Dist" | admin_town_en == "Neihu Dist" | admin_town_en == "Xindian Dist")
+
+print(plot.forecast(train_valid_df))
 
 # Print out accuracy of each model
 naive_forecast_accuracy

@@ -125,7 +125,8 @@ nest_ts <- function(nest){
                  .f = tk_ts,
                  select = sum_offline_scooter, #select the outcome col
                  start= c(2020,31),
-                 deltat= 1/365))
+                 deltat= 1/365),
+                 freq = 7)
   return(nest_ts)
 }
 

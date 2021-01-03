@@ -102,9 +102,6 @@ naive.plot <- function(naive_result){
   return(plot)
 }
 
-ar_models <- n_ts %>%
-    mutate(ar_fit = map(.x=dem_df,
-                        .f = function(x) auto.arima(x ~ )))
 
 #####################
 ### AUTOARIMA. 

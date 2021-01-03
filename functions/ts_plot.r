@@ -12,6 +12,16 @@ plot.ts <- function(data, time){
   return(plot)
 }
 
+err_boxplot <- function(var_data, shift_time, var_name, name){
+  plot <- var_data %>%
+    filter(shift == shift_time) %>%
+    ggplot(aes(model, var,fill = model))+
+    geom_boxplot()+
+    facet_wrap(~admin_town_en)+
+    labs(title = paste(name,shift_time))
+  return(plot)
+}
+
 plot.forecast <- function(full_data){
   plot <- full_data%>%
     ggplot(aes(service_hour_date,sum_offline_scooter.x, color=model, group=model))+
@@ -22,9 +32,6 @@ plot.forecast <- function(full_data){
   return(plot)
 }
 
-plot <- plot.forecast(full_df)
-print(plot)
-plot + geom_line(aes(x=service_hour_date, y=sum_offline_scooter, color = "black"), data = wemo.df.new)
 
 plot.residual <- function(full_data){
   plot <- full_data%>%

@@ -13,10 +13,14 @@ wemo.df <- read.csv("data/Data_Jan_to_Aug.csv")
 wemo.df$service_hour=as.POSIXct(paste(wemo.df$service_hour_date, wemo.df$shift), format="%Y-%m-%d %H:%M:%S")
 
 # Filter area & time (days without 3 shifts)
+# wemo.df.new <- wemo.df%>%
+#   filter(admin_town_zh != "三重區" & admin_town_zh != "超出營運範圍"& admin_town_zh != "泰山區"
+#          & admin_town_zh != "五股區" & admin_town_zh != "土城區" & admin_town_zh != "樹林區" & 
+#            admin_town_zh != "汐止區" & service_hour_date != "2020-01-31" & service_hour_date != "2020-08-31")
+
 wemo.df.new <- wemo.df%>%
-  filter(admin_town_zh != "三重區" & admin_town_zh != "超出營運範圍"& admin_town_zh != "泰山區"
-         & admin_town_zh != "五股區" & admin_town_zh != "土城區" & admin_town_zh != "樹林區" & 
-           admin_town_zh != "汐止區" & service_hour_date != "2020-01-31" & service_hour_date != "2020-08-31")
+  filter(admin_town_zh == "大安區" | admin_town_zh == "內湖區" | admin_town_zh == "新店區"
+         & service_hour_date != "2020-01-31" & service_hour_date != "2020-08-31")
 
 # Derived variable (Weekend or weekday)
 wemo.df.new$weekday<-weekdays(wemo.df.new$service_hour)

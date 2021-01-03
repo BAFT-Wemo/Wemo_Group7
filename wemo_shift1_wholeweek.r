@@ -505,6 +505,31 @@ full_df%>%
   facet_wrap(~admin_town_en, ncol =2, scale='free_y')+
   labs(x='', title='Residuals for offline scooters in [shift1] on testing data in [whole week]')
 
+
+#full_df first two weeks forecast NA
+
+full_df <- full_df%>%
+  mutate(sum_offline_scooter.x = ifelse(as.Date(service_hour_date) < as.Date('2020-08-16'), NA, sum_offline_scooter.x))
+
+#full_df_train +error
+full_df_train <- full_df_train%>%
+  mutate(error = sum_offline_scooter - forecast)
+
+#Change full_df_train name
+
+full_df_train <- full_df_train %>%
+  mutate(sum_offline_scooter.x = forecast,
+         sum_offline_scooter.y = sum_offline_scooter,
+         value = NULL,
+         sum_offline_scooter = NULL)
+
+#Filter forecast & error
+full_df_train <- full_df_train[,-5]
+
+#rbind
+train_valid_df <- rbind(full_df_train, full_df)
+
+
 # Print out accuracy of each model
 naive_forecast_accuracy
 snaive_forecast_accuracy

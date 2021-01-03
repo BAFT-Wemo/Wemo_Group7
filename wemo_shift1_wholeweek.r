@@ -8,7 +8,7 @@ library(caret) # used for avNNet
 library(zoo)
 
 # Read in data
-wemo.df <- read.csv("Downloads/Data_Jan_to_Aug.csv")
+wemo.df <- read.csv("data/Data_Jan_to_Aug.csv")
 wemo.df$service_hour=as.POSIXct(paste(wemo.df$service_hour_date, wemo.df$shift), format="%Y-%m-%d %H:%M:%S")
 
 # Filter area & time (days without 3 shifts)

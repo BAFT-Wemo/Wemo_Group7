@@ -79,12 +79,12 @@ naive_forecast_date <- naive_s1 %>%
 
 
 # label your model forecasts for later visualization
-navie_forecast_date <- naive_forecast_date %>%
+naive_forecast_date <- naive_forecast_date %>%
   mutate(model = 'naive')
 
-#calculate forecast error i
-naive_forecast_date <- naive_forecast_date %>%
-  mutate(error = forecast-sum_offline_scooter)
+# #calculate forecast error i
+# naive_forecast_date <- naive_forecast_date %>%
+#   mutate(error = forecast-sum_offline_scooter)
 
 #plot error series.
 naive_forecast_date%>%
@@ -102,6 +102,30 @@ naive_forecast_date$forecast
 naive_forecast_date%>%
   group_by(admin_town_en)%>%
   summarize(rm = rmse(sum_offline_scooter,forecast))
+
+#Train fitted
+  dist_train_naive <- data.frame(admin_town_en = train_s1$admin_town_en, 
+                                 sum_offline_scooter = train_s1$sum_offline_scooter, 
+                                 service_hour_date = train_s1$service_hour_date, 
+                                 shift = train_s1$shift, 
+                                 weekend_or_weekday = train_s1$weekend_or_weekday)
+  
+  dist_train_naive$forecast[2:3458] <- train_s1$sum_offline_scooter[0:3457]
+  
+  dist_train_naive <- dist_train_naive%>%
+    group_by(admin_town_en)%>%
+    mutate(forecast = ifelse(service_hour_date == first(service_hour_date), NA, forecast ))
+  
+  # label your model forecasts for later visualization
+  dist_train_naive <- dist_train_naive %>%
+    mutate(model = "naive")
+  
+  dist_train_naive <- as.data.frame(dist_train_naive)
+  
+
+  #rbind to one dataframe
+  full_df_train <- data.frame()
+  full_df_train <- rbind(dist_train_naive,full_df_train)
 
 
 ################### BUILD TS OBJECTS
@@ -123,8 +147,7 @@ nest_s1_ts <- nest_s1 %>%
                select = sum_offline_scooter, #select the outcome col
                start= c(2020,31), #Jan 31th 2011 (needs a check!!!)
                #end = c(2020,210),
-               deltat= 1/365),
-               frequency(7)) #daily data
+               deltat= 1/365)) #daily data
 
 
 #####################
@@ -158,7 +181,7 @@ mv_forecast_accuracy <- forecast::accuracy(mv_forecast_date$sum_offline_scooter.
 mv_forecast_date$sum_offline_scooter.y
 
 # join with actual values in train
-full_df_train <- data.frame()
+
 for (i in 1:19) {
   #get fitted value
   mv_fitted <- data.frame(mv_models$mv_fit[[i]])
@@ -199,6 +222,7 @@ ar_forecast <- ar_models %>%
 
 ar_forecast$service_hour_date <- as.character(ar_forecast$service_hour_date)
 
+ar_forecast
 # join with actual values in validation
 ar_forecast_date <- ar_forecast %>%
   left_join(test_s1, by = c('service_hour_date'='service_hour_date', 'admin_town_en'))
@@ -276,7 +300,6 @@ for (i in 1:19) {
   #get fitted value
   lm_fitted <- data.frame(lm_models[[3]][[i]]$fitted.values)
   lm_fitted$admin_town_en <- lm_models$admin_town_en[i]
-  print(lm_fitted)
   
   # conbine fitted and actual
   dist_train <- train_s1%>%
@@ -330,7 +353,6 @@ for (i in 1:19) {
   #get fitted value
   ets_fitted <- data.frame(ets_models[[3]][[i]]$fitted)
   ets_fitted$admin_town_en <- ets_models$admin_town_en[i]
-  print(ets_fitted)
   
   # conbine fitted and actual
   dist_train <- train_s1%>%
@@ -345,36 +367,63 @@ for (i in 1:19) {
   full_df_train <- rbind(dist_train,full_df_train)
 }
 
+
 ################# 
 # Seasonal NAIVE FORECAST
-snaive_models <- nest_s1_ts %>%
-  mutate(snaive_fit = map(.x=dem_df,
-                          .f = snaive))
 
-snaive_forecast <- snaive_models %>%
-  mutate(fcast = map(snaive_fit,
-                     forecast,
-                     h=30))%>%
-  mutate(swp = map(fcast, sw_sweep, fitted=FALSE))%>%
-  unnest(swp)%>%
-  filter(key == 'forecast')%>%
-  mutate(service_hour_date = seq(from = as.Date('2020-08-01'), by='day', length.out = 30))%>%
-  select(admin_town_en, service_hour_date, sum_offline_scooter)
+#Valid  forecast
+dist_valid_snaive <- data.frame(admin_town_en = test_s1$admin_town_en, 
+                                sum_offline_scooter = test_s1$sum_offline_scooter, 
+                                service_hour_date = test_s1$service_hour_date, 
+                                shift = test_s1$shift, 
+                                weekend_or_weekday = test_s1$weekend_or_weekday)
 
+dist_valid_snaive$forecast[8:570] <- test_s1$sum_offline_scooter[0:563]
 
-snaive_forecast$service_hour_date <- as.character(snaive_forecast$service_hour_date)
-# join with actual values in validation
-snaive_forecast_date <- snaive_forecast %>%
-  left_join(test_s1, by = c('service_hour_date'='service_hour_date', 'admin_town_en'))
-
-
-# CHECK ACCURACY ON TEST SET. x is pred, y is actual. RMSE 363.9651
-snaive_forecast_accuracy <- forecast::accuracy(snaive_forecast_date$sum_offline_scooter.y, snaive_forecast_date$sum_offline_scooter.x)
-
+dist_valid_snaive <- dist_valid_snaive%>%
+  group_by(admin_town_en)%>%
+  mutate(forecast = ifelse(as.Date(service_hour_date) < as.Date('2020-08-08'),  NA, forecast ))
 
 # label your model forecasts for later visualization
+dist_valid_snaive <- dist_valid_snaive %>%
+  mutate(model = "snaive")
+
+dist_valid_snaive <- as.data.frame(dist_valid_snaive)
+
+snaive_forecast_date <- dist_valid_snaive %>%
+  select(admin_town_en, service_hour_date, forecast, model)
+
+
+#join with actual values in validation
 snaive_forecast_date <- snaive_forecast_date %>%
-  mutate(model = 'snaive')
+  left_join(test_s1, by = c('service_hour_date'='service_hour_date', 'admin_town_en'))
+
+# CHECK ACCURACY ON TEST SET. x is pred, y is actual. RMSE 363.9651
+snaive_forecast_accuracy <- forecast::accuracy(snaive_forecast_date$sum_offline_scooter.y, snaive_forecast_date$forecast)
+
+
+#Train fitted
+dist_train_snaive <- data.frame(admin_town_en = train_s1$admin_town_en, 
+                               sum_offline_scooter = train_s1$sum_offline_scooter, 
+                               service_hour_date = train_s1$service_hour_date, 
+                               shift = train_s1$shift, 
+                               weekend_or_weekday = train_s1$weekend_or_weekday)
+
+dist_train_snaive$forecast[8:3458] <- train_s1$sum_offline_scooter[0:3451]
+
+dist_train_snaive <- dist_train_snaive%>%
+  group_by(admin_town_en)%>%
+  mutate(forecast = ifelse(as.Date(service_hour_date) < as.Date('2020-02-08'),  NA, forecast ))
+
+# label your model forecasts for later visualization
+dist_train_snaive <- dist_train_snaive %>%
+  mutate(model = "snaive")
+
+dist_train_snaive <- as.data.frame(dist_train_snaive)
+
+
+#rbind to one dataframe
+full_df_train <- rbind(dist_train_snaive,full_df_train)
 
 
 ################# 
@@ -383,6 +432,7 @@ nn_models <- nest_s1_ts %>%
   mutate(nn_fit = map(.x=dem_df,
                       .f = function(x) nnetar(x, repeats = 5, size=10)))
 
+summary(nn_models)
 nn_forecast <- nn_models %>%
   mutate(fcast = map(nn_fit,
                      forecast,
@@ -411,7 +461,14 @@ nn_forecast_accuracy <- forecast::accuracy(nn_forecast_date$sum_offline_scooter.
 # LOOK AT PREDICTION ERROR FOR ALL MODELS
 
 # change column names from naive model to match others. forecast is pred, sum_offline_scooter is actual
-naive_forecast_date <- navie_forecast_date %>%
+naive_forecast_date <- naive_forecast_date %>%
+  mutate(sum_offline_scooter.x = forecast,
+         sum_offline_scooter.y = sum_offline_scooter,
+         value = NULL,
+         sum_offline_scooter = NULL)
+
+# change column names from snaive model to match others. forecast is pred, sum_offline_scooter is actual
+snaive_forecast_date <- snaive_forecast_date %>%
   mutate(sum_offline_scooter.x = forecast,
          sum_offline_scooter.y = sum_offline_scooter,
          value = NULL,
@@ -426,6 +483,8 @@ lm_forecast_date <- lm_forecast_date %>%
 
 
 # Combine all models into one long DF
+lm_forecast_date
+naive_forecast_date
 full_df <- rbind(lm_forecast_date, 
                  ar_forecast_date,
                  ets_forecast_date,
@@ -453,5 +512,4 @@ lm_forecast_accuracy
 ets_forecast_accuracy
 ar_forecast_accuracy
 nn_forecast_accuracy
-
 

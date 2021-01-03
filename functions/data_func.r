@@ -9,7 +9,7 @@ library(sweep)
 
 ### Read data
 # Read in data
-wemo.df <- read.csv("~/BAFT/wemo_project/Data_Jan_to_Aug.csv")
+wemo.df <- read.csv("data/Data_Jan_to_Aug.csv")
 wemo.df$service_hour=as.POSIXct(paste(wemo.df$service_hour_date, wemo.df$shift), format="%Y-%m-%d %H:%M:%S")
 
 # Filter area & time (days without 3 shifts)
@@ -42,6 +42,30 @@ separate_shift <- function(data, time){
   return(shift)
 }
 
+### Add external info. rain and holiday
+
+# external data function
+
+external_data <- function(data){
+  external.df <- read.csv(data)
+  external.df$Date <- dmy(external.df$Date)
+  external.df$Date  <- as.character(external.df$Date )
+  return(external.df)
+}
+
+rain_df <- external_data("data/rain.csv")
+holiday_df <- external_data("data/holiday.csv")
+
+exter.df <- function(shift_df, rain_df, holiday_df){
+  joined_tibble <- left_join(shift_df, rain_df,
+                      by = c("service_hour_date" = "Date", "admin_town_en" = "admin_town_en"))
+  
+  joined_tibble <- left_join(joined_tibble, holiday_df, 
+                             by = c("service_hour_date" = "Date"))
+  return(joined_tibble)
+}
+
+
 ### Plot the time series
 # e.g.
 # plot.ts(shift_1, shift.time[1])
@@ -57,7 +81,6 @@ plot.ts <- function(data, time){
   return(plot)
 }
 
-
 ### roll forward data split
 # e.g.
 # train_s1 <- train_data(shift_1, '2020-07-31')
@@ -66,6 +89,8 @@ plot.ts <- function(data, time){
 # roll forward 8 times
 roll_forward <- c("2020-08-02", "2020-07-26", "2020-07-19", "2020-07-12", 
                   "2020-07-05", "2020-06-28", "2020-06-21", "2020-06-14")
+
+districts <- c("Da’an Dist", "Neihu Dist", "Xindian Dist")
 
 
 train_data <-function(data, date){
@@ -99,3 +124,4 @@ nest_ts <- function(nest){
                  deltat= 1/365))
   return(nest_ts)
 }
+

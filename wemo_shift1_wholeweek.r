@@ -378,11 +378,11 @@ dist_valid_snaive <- data.frame(admin_town_en = test_s1$admin_town_en,
                                 shift = test_s1$shift, 
                                 weekend_or_weekday = test_s1$weekend_or_weekday)
 
-dist_valid_snaive$forecast[8:570] <- test_s1$sum_offline_scooter[0:563]
+dist_valid_snaive$sum_offline_scooter[8:570] <- test_s1$sum_offline_scooter[0:563]
 
 dist_valid_snaive <- dist_valid_snaive%>%
   group_by(admin_town_en)%>%
-  mutate(forecast = ifelse(as.Date(service_hour_date) < as.Date('2020-08-08'),  NA, forecast ))
+  mutate(sum_offline_scooter = ifelse(as.Date(service_hour_date) < as.Date('2020-08-08'),  NA, sum_offline_scooter ))
 
 # label your model forecasts for later visualization
 dist_valid_snaive <- dist_valid_snaive %>%
@@ -391,7 +391,7 @@ dist_valid_snaive <- dist_valid_snaive %>%
 dist_valid_snaive <- as.data.frame(dist_valid_snaive)
 
 snaive_forecast_date <- dist_valid_snaive %>%
-  select(admin_town_en, service_hour_date, forecast, model)
+  select(admin_town_en, service_hour_date, sum_offline_scooter, model)
 
 
 #join with actual values in validation
@@ -467,13 +467,6 @@ naive_forecast_date <- naive_forecast_date %>%
          value = NULL,
          sum_offline_scooter = NULL)
 
-# change column names from snaive model to match others. forecast is pred, sum_offline_scooter is actual
-snaive_forecast_date <- snaive_forecast_date %>%
-  mutate(sum_offline_scooter.x = forecast,
-         sum_offline_scooter.y = sum_offline_scooter,
-         value = NULL,
-         sum_offline_scooter = NULL)
-
 # change column names from lm model to match others. Value is pred, sum_offline_scooter is actual
 lm_forecast_date <- lm_forecast_date %>%
   mutate(sum_offline_scooter.x = value,
@@ -483,15 +476,23 @@ lm_forecast_date <- lm_forecast_date %>%
 
 
 # Combine all models into one long DF
-lm_forecast_date
+class(lm_forecast_date)
 naive_forecast_date
+class(snaive_forecast_date)
+
+
 full_df <- rbind(lm_forecast_date, 
                  ar_forecast_date,
                  ets_forecast_date,
-                 snaive_forecast_date,
+                 #snaive_forecast_date,
                  naive_forecast_date,
                  nn_forecast_date,
                  mv_forecast_date)
+
+full_df <- as.data.frame(full_df)
+full_df <- full_df[,-8]
+
+full_df <- rbind(full_df, snaive_forecast_date)
 
 full_df <- full_df%>%
   mutate(error = sum_offline_scooter.x - sum_offline_scooter.y)

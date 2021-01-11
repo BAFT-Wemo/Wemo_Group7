@@ -6,9 +6,7 @@ library(lubridate)
 library(sweep)
 library(caret) # used for avNNet
 library(zoo)
-source("functions/model_func.r")
-source("functions/ts_plot.r")
-
+library(ModelMetrics)
 
 # Read in data
 wemo.df <- read.csv("data/Data_Jan_to_Aug.csv")
@@ -267,7 +265,7 @@ ar_forecast %>%
   group_by(admin_town_en)%>%
   ggplot(aes(service_hour_date, sum_offline_scooter, color=admin_town_en, group=admin_town_en))+
   geom_line(size=1)+
-  labs(x='', title='ARIMA plot for [shift1] in [whole week]')
+  labs(x='', title='ARIMA plot for [shift1]')
 
 
 
@@ -451,7 +449,7 @@ nn_forecast <- nn_models %>%
 
 nn_forecast$service_hour_date <- as.character(nn_forecast$service_hour_date)
 
-#join with actual values in validation
+#join with actual values in validation 
 nn_forecast_date <- nn_forecast %>%
   left_join(test_s1, by = c('service_hour_date'='service_hour_date', 'admin_town_en'))
 
@@ -528,7 +526,7 @@ full_df <- full_df[,-8]
 full_df <- rbind(full_df, snaive_forecast_date)
 
 full_df <- full_df%>%
-  mutate(error = sum_offline_scooter.x - sum_offline_scooter.y)
+  mutate(error = sum_offline_scooter.y - sum_offline_scooter.x)
 
 # Conclude from the visual (error in all models)
 full_df%>%
@@ -536,7 +534,7 @@ full_df%>%
   geom_line()+
   ylim(-1500,3000)+
   facet_wrap(~admin_town_en, ncol =2, scale='free_y')+
-  labs(x='', title='Residuals for offline scooters in [shift1] on testing data in [whole week]')
+  labs(x='', title='Residuals for offline scooters in [shift1] on testing data')
 
 
 #full_df first two weeks forecast NA
@@ -576,7 +574,115 @@ ets_forecast_accuracy
 ar_forecast_accuracy
 nn_forecast_accuracy
 
+###Plot Function
+plot.forecast <- function(full_data){
+  plot <- full_data%>%
+    ggplot(aes(service_hour_date,sum_offline_scooter.x, color=model, group=model))+
+    geom_line()+
+    geom_line(aes(service_hour_date,sum_offline_scooter.y, color="actual", group=model), col = "black")+
+    scale_x_date(breaks = function(x) seq.Date(from = min(x), to = max(x), by = "1 month"))+
+    facet_wrap(~admin_town_en, ncol =2, scale='free_y')+
+    ylim(0, 2300)+
+    labs(x='', title='Forecast / Actual for offline scooters in [shift1] on testing data')
+  return(plot)
+}
 
-library(plotly)
+plot.residual <- function(full_data){
+  plot <- full_data%>%
+    ggplot(aes(service_hour_date, error, color=model, group=model))+
+    geom_line()+
+    scale_x_date(breaks = function(x) seq.Date(from = min(x), to = max(x), by = "1 week"))+
+    facet_wrap(~admin_town_en, ncol =2, scale='free_y')+
+    ylim(-1000, 1500)
+    labs(x='', title='Residuals for offline scooters in [shift1] on testing data')
+  return(plot)
+}
 
-ggplotly(plot.residual(train_valid_df))
+#train_valid_df  <- train_valid_df %>%
+#  filter(admin_town_en == "Da’an Dist" | admin_town_en == "Neihu Dist" | admin_town_en == "Xinzhuang Dist")
+
+
+#full_df  <- full_df %>%
+#  filter(admin_town_en == "Da’an Dist" | admin_town_en == "Neihu Dist" | admin_town_en == "Xinzhuang Dist")
+
+train_valid_df$service_hour_date <- as.Date(train_valid_df$service_hour_date)
+plot.forecast(train_valid_df)
+full_df$service_hour_date <- as.Date(full_df$service_hour_date)
+plot.residual(full_df)
+
+
+
+#####Valid RMSE
+# Filter first two weeks
+full_df <- full_df%>%
+  filter(as.Date(service_hour_date) >= as.Date('2020-08-16'))
+
+# daan district RMSE
+daan <- full_df %>%
+  filter(admin_town_en == "Da’an Dist")
+
+daan.rmse <- daan %>%
+  group_by(model) %>%
+  summarise(
+    RMSE = rmse(sum_offline_scooter.x,sum_offline_scooter.y)
+    ,R2 = cor(sum_offline_scooter.x, sum_offline_scooter.y)^2
+  )
+
+# Neihu district RMSE
+neihu <- full_df %>%
+  filter(admin_town_en == "Neihu Dist")
+
+neihu.rmse <- neihu  %>%
+  group_by(model) %>%
+  summarise(
+    RMSE = rmse(sum_offline_scooter.x,sum_offline_scooter.y)
+    ,R2 = cor(sum_offline_scooter.x, sum_offline_scooter.y)^2
+  )
+
+# Xinzhuang district RMSE
+xinzhuang <- full_df %>%
+  filter(admin_town_en == "Xinzhuang Dist")
+
+xinzhuang.rmse <- xinzhuang %>%
+  group_by(model) %>%
+  summarise(
+    RMSE = rmse(sum_offline_scooter.x,sum_offline_scooter.y)
+    ,R2 = cor(sum_offline_scooter.x, sum_offline_scooter.y)^2
+  )
+
+
+#####Train RMSE
+full_df_train <- na.omit(full_df_train)
+
+# daan district RMSE
+daan_train <- full_df_train %>%
+  filter(admin_town_en == "Da’an Dist")
+
+daan.rmse.train <- daan_train %>%
+  group_by(model) %>%
+  summarise(
+    RMSE = rmse(sum_offline_scooter.x,sum_offline_scooter.y)
+    ,R2 = cor(sum_offline_scooter.x, sum_offline_scooter.y)^2
+  )
+
+# Neihu district RMSE
+neihu_train <- full_df_train %>%
+  filter(admin_town_en == "Neihu Dist")
+
+neihu.rmse.train <- neihu_train  %>%
+  group_by(model) %>%
+  summarise(
+    RMSE = rmse(sum_offline_scooter.x,sum_offline_scooter.y)
+    ,R2 = cor(sum_offline_scooter.x, sum_offline_scooter.y)^2
+  )
+
+# Xinzhuang district RMSE
+xinzhuang_train <- full_df_train %>%
+  filter(admin_town_en == "Xinzhuang Dist")
+
+xinzhuang.rmse.train <- xinzhuang_train %>%
+  group_by(model) %>%
+  summarise(
+    RMSE = rmse(sum_offline_scooter.x,sum_offline_scooter.y)
+    ,R2 = cor(sum_offline_scooter.x, sum_offline_scooter.y)^2
+  )

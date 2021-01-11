@@ -6,6 +6,9 @@ library(lubridate)
 library(sweep)
 library(caret) # used for avNNet
 library(zoo)
+source("functions/model_func.r")
+source("functions/ts_plot.r")
+
 
 # Read in data
 wemo.df <- read.csv("data/Data_Jan_to_Aug.csv")
@@ -273,7 +276,7 @@ ar_forecast %>%
 ## FORECAST in testing for 30 days
 lm_models <- nest_s1_ts %>%
   mutate(lm_fit = map(.x=dem_df,
-                      .f = function(x) tslm(x ~ trend+season)))
+                      .f = function(x) tslm(x ~ trend + season)))
 
 lm_forecast <- lm_models %>%
   mutate(fcast = map(lm_fit,
@@ -381,7 +384,7 @@ dist_valid_snaive <- data.frame(admin_town_en = test_s1$admin_town_en,
                                 shift = test_s1$shift, 
                                 weekend_or_weekday = test_s1$weekend_or_weekday)
 
-dist_valid_snaive$sum_offline_scooter[8:570] <- test_s1$sum_offline_scooter[0:563]
+dist_valid_snaive$sum_offline_scooter[8:570] <- test_s1$sum_offline_scooter[1:564]
 
 # dist_valid_snaive <- dist_valid_snaive%>%
 #   group_by(admin_town_en)%>%
@@ -406,13 +409,13 @@ snaive_forecast_accuracy <- forecast::accuracy(snaive_forecast_date$sum_offline_
 
 
 #Train fitted
-dist_train_snaive <- data.frame(admin_town_en = train_s1$admin_town_en, 
-                               sum_offline_scooter = train_s1$sum_offline_scooter, 
-                               service_hour_date = train_s1$service_hour_date, 
-                               shift = train_s1$shift, 
+dist_train_snaive <- data.frame(admin_town_en = train_s1$admin_town_en,
+                               sum_offline_scooter = train_s1$sum_offline_scooter,
+                               service_hour_date = train_s1$service_hour_date,
+                               shift = train_s1$shift,
                                weekend_or_weekday = train_s1$weekend_or_weekday)
 
-dist_train_snaive$forecast[8:3458] <- train_s1$sum_offline_scooter[0:3451]
+dist_train_snaive$admin_town_en[8:3458] <- train_s1$sum_offline_scooter[1:3451]
 
 dist_train_snaive <- dist_train_snaive%>%
   group_by(admin_town_en)%>%
@@ -458,6 +461,33 @@ nn_forecast_date <- nn_forecast_date %>%
 
 #CHECK ACCURACY ON TEST SET. x is pred, y is actual. RMSE 261.4412
 nn_forecast_accuracy <- forecast::accuracy(nn_forecast_date$sum_offline_scooter.y, nn_forecast_date$sum_offline_scooter.x)
+
+
+# join with actual values in train
+for (i in 1:19) {
+  #get fitted value
+  nn_fitted <- data.frame(nn_models[[3]][[i]][["fitted"]])
+  nn_fitted$admin_town_en <- nn_models$admin_town_en[i]
+  nn_fitted
+  # conbine fitted and actual
+  dist_train <- train_s1%>%
+    filter(admin_town_en == nn_fitted$admin_town_en[i])
+  dist_train$forecast <- nn_fitted[1]
+  
+  # label your model forecasts for later visualization
+  dist_train <- dist_train %>%
+    mutate(model = "nn")
+  
+  class(dist_train)
+  class(full_df_train)
+  dist_train$forecast <- data.matrix(dist_train$forecast)
+  class(dist_train$forecast)
+  class(dist_train$sum_offline_scooter)
+  
+  #rbind to one dataframe
+  full_df_train <- rbind(dist_train,full_df_train)
+}
+
 
 
 ############ Combine all into one long DF
@@ -533,9 +563,9 @@ full_df_train <- full_df_train[,-5]
 train_valid_df <- rbind(full_df_train, full_df)
 
 train_valid_df  <- train_valid_df %>%
-  filter(admin_town_en == "Da’an Dist" | admin_town_en == "Neihu Dist" | admin_town_en == "Xindian Dist")
+  filter(admin_town_en == "Da’an Dist" | admin_town_en == "Neihu Dist" | admin_town_en == "Xinzhuang Dist")
 
-print(plot.forecast(train_valid_df))
+ggplotly(plot.forecast(train_valid_df))
 
 # Print out accuracy of each model
 naive_forecast_accuracy
@@ -546,3 +576,7 @@ ets_forecast_accuracy
 ar_forecast_accuracy
 nn_forecast_accuracy
 
+
+library(plotly)
+
+ggplotly(plot.residual(train_valid_df))

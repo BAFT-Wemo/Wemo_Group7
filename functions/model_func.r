@@ -15,6 +15,13 @@ dist.rmse <- function(model_result){
   return(model_rmse)
 }
 
+# daan.rmse <- daan %>%
+#   group_by(model) %>%
+#   summarise(
+#     RMSE = rmse(sum_offline_scooter.x,sum_offline_scooter.y)
+#     ,R2 = cor(sum_offline_scooter.x, sum_offline_scooter.y)^2
+#   )
+
 rmse_boxplot <- function(rmse_data, shift_time){
   plot <- rmse_data %>%
     filter(shift == shift_time) %>%
@@ -41,7 +48,7 @@ model_name <- c("naive", "snaive", "ets", "lm", "arima", "mv", "nn")
 ### Naive Forecast
 # Create naive model
 # e.g.
-# Naive.model(train_s1, test_s1, 30, '2020-08-01')
+# Naive.model(train_s1, test_data, 30, '2020-08-01')
 
 Naive.model <- function(train_data, test_data, repeated_day, last_naive_day){
   # Create naive prediction items
@@ -90,7 +97,7 @@ Naive.model <- function(train_data, test_data, repeated_day, last_naive_day){
 
 # Plot naive error series.
 # e.g.
-# naive_result <- Naive.model(train_s1, test_s1, 30, '2020-08-01')
+# naive_result <- Naive.model(train_s1, test_data, 30, '2020-08-01')
 # naive.plot(naive_result)
 
 naive.plot <- function(naive_result){
@@ -175,7 +182,7 @@ ar.plot <- function(ar_result){
 lm.model <- function(nest_ts, test_data, repeated_day, last_day){
   lm_models <- nest_ts %>%
     mutate(lm_fit = map(.x=dem_df,
-                        .f = function(x) tslm(x ~ trend)))
+                        .f = function(x) tslm(x ~ trend + season)))
   
   lm_forecast <- lm_models %>%
     mutate(fcast = map(lm_fit,
@@ -238,35 +245,31 @@ ets.model <- function(nest_ts, test_data, repeated_day, last_day){
 ################# 
 # Seasonal NAIVE FORECAST
 
-snaive.model <- function(nest_ts, test_data, repeated_day, last_day){
-  snaive_models <- nest_ts %>%
-    mutate(snaive_fit = map(.x=dem_df,
-                            .f = snaive))
+snaive.model <- function(test_df, n){
+  dist_valid_snaive <- data.frame(admin_town_en = test_df$admin_town_en, 
+                                  #sum_offline_scooter = test_df$sum_offline_scooter, 
+                                  service_hour_date = test_df$service_hour_date, 
+                                  shift = test_df$shift, 
+                                  weekend_or_weekday = test_df$weekend_or_weekday)
   
-  snaive_forecast <- snaive_models %>%
-    mutate(fcast = map(snaive_fit,
-                       forecast,
-                       h=repeated_day))%>%
-    mutate(swp = map(fcast, sw_sweep, fitted=FALSE))%>%
-    unnest(swp)%>%
-    filter(key == 'forecast')%>%
-    mutate(service_hour_date = seq(from = as.Date(last_day), by='day', length.out = repeated_day))%>%
-    select(admin_town_en, service_hour_date, sum_offline_scooter)
-  
-  snaive_forecast$service_hour_date <- as.character(snaive_forecast$service_hour_date)
-  # join with actual values in validation
-  snaive_forecast_date <- snaive_forecast %>%
-    left_join(test_data, by = c('service_hour_date'='service_hour_date', 'admin_town_en'))
-  
-  # CHECK ACCURACY ON TEST SET. x is pred, y is actual. RMSE 363.9651
-  snaive_forecast_accuracy <- forecast::accuracy(snaive_forecast_date$sum_offline_scooter.y, snaive_forecast_date$sum_offline_scooter.x)
+  dist_valid_snaive$sum_offline_scooter[8:length(test_df$sum_offline_scooter)] <- test_df$sum_offline_scooter[1:(length(test_df$sum_offline_scooter)-7)]
   
   # label your model forecasts for later visualization
+  dist_valid_snaive <- dist_valid_snaive %>%
+    mutate(model = "snaive")
+  
+  dist_valid_snaive <- as.data.frame(dist_valid_snaive)
+  
+  snaive_forecast_date <- dist_valid_snaive %>%
+    select(admin_town_en, service_hour_date, sum_offline_scooter, model)
+  
+  #join with actual values in validation
   snaive_forecast_date <- snaive_forecast_date %>%
-    mutate(model = 'snaive')
+    left_join(test_df, by = c('service_hour_date'='service_hour_date', 'admin_town_en'))
   
   return(snaive_forecast_date)
 }
+
 
 ################# 
 #Nerual Net

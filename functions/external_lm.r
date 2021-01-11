@@ -1,13 +1,18 @@
 source("functions/data_func.r")
 source("functions/model_func.r")
 
-rain_df <- external_data("data/rain.csv")
-holiday_df <- external_data("data/holiday.csv")
 
-ext_df <- left_join(shift.df, rain_df, 
-                             by = c("service_hour_date" = "Date", "admin_town_en" = "admin_town_en"))
+shift <- separate_shift(wemo.df.new, shift.time[1])
+rain_df$admin_town_en <- ifelse(rain_df$admin_town_en == "Daan Dist", "Da’an Dist", rain_df$admin_town_en)
+extra <- exter.df(shift, rain_df, holiday_df)
+train <- train_data(extra, roll_forward[1])
+test <- test_data(extra, roll_forward[1])
+nest.df <- nest_a(train)
 
-joined_tibble <- left_join(joined_tibble, holiday_df, 
-                           by = c("service_hour_date" = "Date"))
+n_ts <- nest_ts(nest.df)
 
-ext_nest <- nest_a(joined_tibble)
+x <- as.data.frame(cbind(rain_df[,3], holiday_df[,2]))
+formula <- as.formula(paste("n_ts", paste(c("trend", colnames()))))
+
+
+

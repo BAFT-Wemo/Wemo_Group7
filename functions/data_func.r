@@ -9,14 +9,18 @@ library(sweep)
 
 ### Read data
 # Read in data
-wemo.df <- read.csv("~/BAFT/wemo_project/Data_Jan_to_Aug.csv")
+wemo.df <- read.csv("data/Data_Jan_to_Aug.csv")
 wemo.df$service_hour=as.POSIXct(paste(wemo.df$service_hour_date, wemo.df$shift), format="%Y-%m-%d %H:%M:%S")
 
 # Filter area & time (days without 3 shifts)
 wemo.df.new <- wemo.df%>%
   filter(admin_town_zh != "三重區" & admin_town_zh != "超出營運範圍"& admin_town_zh != "泰山區"
-         & admin_town_zh != "五股區" & admin_town_zh != "土城區" & admin_town_zh != "樹林區" & 
+         & admin_town_zh != "五股區" & admin_town_zh != "土城區" & admin_town_zh != "樹林區" &
            admin_town_zh != "汐止區" & service_hour_date != "2020-01-31" & service_hour_date != "2020-08-31")
+
+# wemo.df.new <- wemo.df%>%
+#   filter(admin_town_zh == "大安區" | admin_town_zh == "內湖區" | admin_town_zh == "新莊區")%>%
+#   filter(service_hour_date != as.Date("2020-01-31") & service_hour_date != as.Date("2020-08-31"))
 
 # Derived variable (Weekend or weekday)
 wemo.df.new$weekday<-weekdays(wemo.df.new$service_hour)
@@ -34,13 +38,37 @@ wemo.df.new <- wemo.df.new %>%
 # shift.time <- c("00:00:00", "08:00:00", "16:00:00")
 # shift_1 <- separate_shift(wemo.df.new, shift.time[1])
 
-shift.time <- c("00:00:00", "08:00:00", "16:00:00")
+shift.time <- c("08:00:00", "16:00:00", "00:00:00")
 
 separate_shift <- function(data, time){
   shift <- data%>%
     filter(shift == time)
   return(shift)
 }
+
+### Add external info. rain and holiday
+
+# external data function
+
+external_data <- function(data){
+  external.df <- read.csv(data)
+  external.df$Date <- dmy(external.df$Date)
+  external.df$Date  <- as.character(external.df$Date )
+  return(external.df)
+}
+
+rain_df <- external_data("data/rain.csv")
+holiday_df <- external_data("data/holiday.csv")
+
+exter.df <- function(shift_df, rain_df, holiday_df){
+  joined_tibble <- left_join(shift_df, rain_df,
+                      by = c("service_hour_date" = "Date", "admin_town_en" = "admin_town_en"))
+  
+  joined_tibble <- left_join(joined_tibble, holiday_df, 
+                             by = c("service_hour_date" = "Date"))
+  return(joined_tibble)
+}
+
 
 ### Plot the time series
 # e.g.
@@ -57,7 +85,6 @@ plot.ts <- function(data, time){
   return(plot)
 }
 
-
 ### roll forward data split
 # e.g.
 # train_s1 <- train_data(shift_1, '2020-07-31')
@@ -66,6 +93,8 @@ plot.ts <- function(data, time){
 # roll forward 8 times
 roll_forward <- c("2020-08-02", "2020-07-26", "2020-07-19", "2020-07-12", 
                   "2020-07-05", "2020-06-28", "2020-06-21", "2020-06-14")
+
+districts <- c("Da’an Dist", "Neihu Dist", "Xindian Dist")
 
 
 train_data <-function(data, date){
@@ -96,6 +125,8 @@ nest_ts <- function(nest){
                  .f = tk_ts,
                  select = sum_offline_scooter, #select the outcome col
                  start= c(2020,31),
-                 deltat= 1/365))
+                 deltat= 1/365,
+                 freq = 7))
   return(nest_ts)
 }
+

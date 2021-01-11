@@ -9,14 +9,16 @@ library(zoo)
 library(ModelMetrics)
 
 # Read in data
-wemo.df <- read.csv("Downloads/Data_Jan_to_Aug.csv")
+wemo.df <- read.csv("data/Data_Jan_to_Aug.csv")
 wemo.df$service_hour=as.POSIXct(paste(wemo.df$service_hour_date, wemo.df$shift), format="%Y-%m-%d %H:%M:%S")
 
 # Filter area & time (days without 3 shifts)
 wemo.df.new <- wemo.df%>%
   filter(admin_town_zh != "三重區" & admin_town_zh != "超出營運範圍"& admin_town_zh != "泰山區"
-         & admin_town_zh != "五股區" & admin_town_zh != "土城區" & admin_town_zh != "樹林區" & 
+         & admin_town_zh != "五股區" & admin_town_zh != "土城區" & admin_town_zh != "樹林區" &
            admin_town_zh != "汐止區" & service_hour_date != "2020-01-31" & service_hour_date != "2020-08-31")
+
+
 
 # Derived variable (Weekend or weekday)
 wemo.df.new$weekday<-weekdays(wemo.df.new$service_hour)
@@ -380,7 +382,7 @@ dist_valid_snaive <- data.frame(admin_town_en = test_s1$admin_town_en,
                                 shift = test_s1$shift, 
                                 weekend_or_weekday = test_s1$weekend_or_weekday)
 
-dist_valid_snaive$sum_offline_scooter[8:570] <- test_s1$sum_offline_scooter[0:563]
+dist_valid_snaive$sum_offline_scooter[8:570] <- test_s1$sum_offline_scooter[1:564]
 
 # dist_valid_snaive <- dist_valid_snaive%>%
 #   group_by(admin_town_en)%>%
@@ -405,13 +407,13 @@ snaive_forecast_accuracy <- forecast::accuracy(snaive_forecast_date$sum_offline_
 
 
 #Train fitted
-dist_train_snaive <- data.frame(admin_town_en = train_s1$admin_town_en, 
-                               sum_offline_scooter = train_s1$sum_offline_scooter, 
-                               service_hour_date = train_s1$service_hour_date, 
-                               shift = train_s1$shift, 
+dist_train_snaive <- data.frame(admin_town_en = train_s1$admin_town_en,
+                               sum_offline_scooter = train_s1$sum_offline_scooter,
+                               service_hour_date = train_s1$service_hour_date,
+                               shift = train_s1$shift,
                                weekend_or_weekday = train_s1$weekend_or_weekday)
 
-dist_train_snaive$forecast[8:3458] <- train_s1$sum_offline_scooter[0:3451]
+dist_train_snaive$admin_town_en[8:3458] <- train_s1$sum_offline_scooter[1:3451]
 
 dist_train_snaive <- dist_train_snaive%>%
   group_by(admin_town_en)%>%
@@ -558,6 +560,10 @@ full_df_train <- full_df_train[,-5]
 #rbind
 train_valid_df <- rbind(full_df_train, full_df)
 
+train_valid_df  <- train_valid_df %>%
+  filter(admin_town_en == "Da’an Dist" | admin_town_en == "Neihu Dist" | admin_town_en == "Xinzhuang Dist")
+
+ggplotly(plot.forecast(train_valid_df))
 
 # Print out accuracy of each model
 naive_forecast_accuracy

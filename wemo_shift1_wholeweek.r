@@ -9,14 +9,16 @@ library(zoo)
 library(ModelMetrics)
 
 # Read in data
-wemo.df <- read.csv("Downloads/Data_Jan_to_Aug.csv")
+wemo.df <- read.csv("data/Data_Jan_to_Aug.csv")
 wemo.df$service_hour=as.POSIXct(paste(wemo.df$service_hour_date, wemo.df$shift), format="%Y-%m-%d %H:%M:%S")
 
 # Filter area & time (days without 3 shifts)
 wemo.df.new <- wemo.df%>%
   filter(admin_town_zh != "三重區" & admin_town_zh != "超出營運範圍"& admin_town_zh != "泰山區"
-         & admin_town_zh != "五股區" & admin_town_zh != "土城區" & admin_town_zh != "樹林區" & 
+         & admin_town_zh != "五股區" & admin_town_zh != "土城區" & admin_town_zh != "樹林區" &
            admin_town_zh != "汐止區" & service_hour_date != "2020-01-31" & service_hour_date != "2020-08-31")
+
+
 
 # Derived variable (Weekend or weekday)
 wemo.df.new$weekday<-weekdays(wemo.df.new$service_hour)
@@ -263,7 +265,7 @@ ar_forecast %>%
   group_by(admin_town_en)%>%
   ggplot(aes(service_hour_date, sum_offline_scooter, color=admin_town_en, group=admin_town_en))+
   geom_line(size=1)+
-  labs(x='', title='ARIMA plot for [shift1] in [whole week]')
+  labs(x='', title='ARIMA plot for [shift1]')
 
 
 
@@ -380,7 +382,7 @@ dist_valid_snaive <- data.frame(admin_town_en = test_s1$admin_town_en,
                                 shift = test_s1$shift, 
                                 weekend_or_weekday = test_s1$weekend_or_weekday)
 
-dist_valid_snaive$sum_offline_scooter[8:570] <- test_s1$sum_offline_scooter[0:563]
+dist_valid_snaive$sum_offline_scooter[8:570] <- test_s1$sum_offline_scooter[1:564]
 
 # dist_valid_snaive <- dist_valid_snaive%>%
 #   group_by(admin_town_en)%>%
@@ -405,13 +407,13 @@ snaive_forecast_accuracy <- forecast::accuracy(snaive_forecast_date$sum_offline_
 
 
 #Train fitted
-dist_train_snaive <- data.frame(admin_town_en = train_s1$admin_town_en, 
-                               sum_offline_scooter = train_s1$sum_offline_scooter, 
-                               service_hour_date = train_s1$service_hour_date, 
-                               shift = train_s1$shift, 
+dist_train_snaive <- data.frame(admin_town_en = train_s1$admin_town_en,
+                               sum_offline_scooter = train_s1$sum_offline_scooter,
+                               service_hour_date = train_s1$service_hour_date,
+                               shift = train_s1$shift,
                                weekend_or_weekday = train_s1$weekend_or_weekday)
 
-dist_train_snaive$forecast[8:3458] <- train_s1$sum_offline_scooter[0:3451]
+dist_train_snaive$admin_town_en[8:3458] <- train_s1$sum_offline_scooter[1:3451]
 
 dist_train_snaive <- dist_train_snaive%>%
   group_by(admin_town_en)%>%
@@ -447,7 +449,7 @@ nn_forecast <- nn_models %>%
 
 nn_forecast$service_hour_date <- as.character(nn_forecast$service_hour_date)
 
-#join with actual values in validation
+#join with actual values in validation 
 nn_forecast_date <- nn_forecast %>%
   left_join(test_s1, by = c('service_hour_date'='service_hour_date', 'admin_town_en'))
 
@@ -524,7 +526,7 @@ full_df <- full_df[,-8]
 full_df <- rbind(full_df, snaive_forecast_date)
 
 full_df <- full_df%>%
-  mutate(error = sum_offline_scooter.x - sum_offline_scooter.y)
+  mutate(error = sum_offline_scooter.y - sum_offline_scooter.x)
 
 # Conclude from the visual (error in all models)
 full_df%>%
@@ -532,7 +534,7 @@ full_df%>%
   geom_line()+
   ylim(-1500,3000)+
   facet_wrap(~admin_town_en, ncol =2, scale='free_y')+
-  labs(x='', title='Residuals for offline scooters in [shift1] on testing data in [whole week]')
+  labs(x='', title='Residuals for offline scooters in [shift1] on testing data')
 
 
 #full_df first two weeks forecast NA
@@ -558,6 +560,10 @@ full_df_train <- full_df_train[,-5]
 #rbind
 train_valid_df <- rbind(full_df_train, full_df)
 
+train_valid_df  <- train_valid_df %>%
+  filter(admin_town_en == "Da’an Dist" | admin_town_en == "Neihu Dist" | admin_town_en == "Xinzhuang Dist")
+
+ggplotly(plot.forecast(train_valid_df))
 
 # Print out accuracy of each model
 naive_forecast_accuracy
@@ -574,8 +580,10 @@ plot.forecast <- function(full_data){
     ggplot(aes(service_hour_date,sum_offline_scooter.x, color=model, group=model))+
     geom_line()+
     geom_line(aes(service_hour_date,sum_offline_scooter.y, color="actual", group=model), col = "black")+
-    facet_wrap(~admin_town_en, ncol =1, scale='free_y')+
-    labs(x='', title='Residuals for offline scooters in [shift1] on testing data in [whole week]')
+    scale_x_date(breaks = function(x) seq.Date(from = min(x), to = max(x), by = "1 month"))+
+    facet_wrap(~admin_town_en, ncol =2, scale='free_y')+
+    ylim(0, 2300)+
+    labs(x='', title='Forecast / Actual for offline scooters in [shift1] on testing data')
   return(plot)
 }
 
@@ -583,16 +591,24 @@ plot.residual <- function(full_data){
   plot <- full_data%>%
     ggplot(aes(service_hour_date, error, color=model, group=model))+
     geom_line()+
-    facet_wrap(~admin_town_en, ncol =1, scale='free_y')+
-    labs(x='', title='Residuals for offline scooters in [shift1] on testing data in [whole week]')
+    scale_x_date(breaks = function(x) seq.Date(from = min(x), to = max(x), by = "1 week"))+
+    facet_wrap(~admin_town_en, ncol =2, scale='free_y')+
+    ylim(-1000, 1500)
+    labs(x='', title='Residuals for offline scooters in [shift1] on testing data')
   return(plot)
 }
 
-train_valid_df  <- train_valid_df %>%
-  filter(admin_town_en == "Da’an Dist" | admin_town_en == "Neihu Dist" | admin_town_en == "Xinzhuang Dist")
+#train_valid_df  <- train_valid_df %>%
+#  filter(admin_town_en == "Da’an Dist" | admin_town_en == "Neihu Dist" | admin_town_en == "Xinzhuang Dist")
 
+
+#full_df  <- full_df %>%
+#  filter(admin_town_en == "Da’an Dist" | admin_town_en == "Neihu Dist" | admin_town_en == "Xinzhuang Dist")
+
+train_valid_df$service_hour_date <- as.Date(train_valid_df$service_hour_date)
 plot.forecast(train_valid_df)
-plot.residual(train_valid_df)
+full_df$service_hour_date <- as.Date(full_df$service_hour_date)
+plot.residual(full_df)
 
 
 

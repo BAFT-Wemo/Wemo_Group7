@@ -1,5 +1,8 @@
 # Wemo Low Battery Scooters Forecast
 
+## Status
+[![CRAN](https://img.shields.io/badge/CRAN-4.0.3-green)](https://stat.ethz.ch/pipermail/r-announce/2020/000662.html)
+
 ## Overview
 
 This is a time serise forecast project for low-battery scooters amount forecast. In this project, we use linear regression, exponential smoothing(ETS), ARIMA to do the forecast. 

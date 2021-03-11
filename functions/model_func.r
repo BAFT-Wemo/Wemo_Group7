@@ -15,6 +15,13 @@ dist.rmse <- function(model_result){
   return(model_rmse)
 }
 
+dist.rmse.train <- function(model_result){
+  model_rmse <- model_result%>%
+    group_by(admin_town_en, model, roll_forward, shift)%>%
+    summarize(result.rmse = rmse(forecast,sum_offline_scooter), .groups = 'drop')
+  return(model_rmse)
+}
+
 # daan.rmse <- daan %>%
 #   group_by(model) %>%
 #   summarise(
@@ -91,8 +98,24 @@ Naive.model <- function(train_data, test_data, repeated_day, last_naive_day){
            sum_offline_scooter.y = sum_offline_scooter,
            value = NULL,
            sum_offline_scooter = NULL)
+  
+  naive_forecast_date <- naive_forecast_date[,-1]
+  
+  dist_train_naive <- data.frame(admin_town_en = train_data$admin_town_en, 
+                                 sum_offline_scooter = train_data$sum_offline_scooter, 
+                                 service_hour_date = train_data$service_hour_date, 
+                                 shift = train_data$shift, 
+                                 weekend_or_weekday = train_data$weekend_or_weekday)
+  dist_train_naive$forecast[2:nrow(train_data)] <- train_data$sum_offline_scooter[1:(nrow(train_data)-1)]
+  dist_train_naive <- dist_train_naive%>%
+    group_by(admin_town_en)%>%
+    mutate(forecast = ifelse(service_hour_date == first(service_hour_date), NA, forecast ))
+  dist_train_naive <- dist_train_naive %>%
+    mutate(model = "naive")
+  
+  dist_train_naive <- as.data.frame(dist_train_naive)
 
-  return(naive_forecast_date)
+  return(list(naive_forecast_date, dist_train_naive))
 }
 
 # Plot naive error series.
@@ -112,7 +135,7 @@ naive.plot <- function(naive_result){
 
 #####################
 ### AUTOARIMA. 
-ARIMA.model <- function(nest_ts, test_data, repeated_day, last_day){
+ARIMA.model <- function(nest_ts, train_data, test_data, repeated_day, last_day){
   ar_models <- nest_ts %>%
     mutate(ar_fit = map(.x=dem_df,
                         .f = auto.arima))
@@ -138,31 +161,26 @@ ARIMA.model <- function(nest_ts, test_data, repeated_day, last_day){
   ar_forecast_date <- ar_forecast_date %>%
     mutate(model = 'arima')
   
-  return(ar_forecast_date)
-}
-
-ar_model_train <- function(train_df){
-  # join with actual values in train
-  for (i in 1:19) {
+  ar_dist_train <- data.frame()
+  
+  for (k in 1:3) {
     #get fitted value
-    ar_fitted <- data.frame(ar_models[[3]][[i]]$fitted)
-    ar_fitted$admin_town_en <- ar_models$admin_town_en[i]
+    ar_fitted <- data.frame(ar_models[[3]][[k]]$fitted)
+    ar_fitted$admin_town_en <- ar_models$admin_town_en[k]
     
     # conbine fitted and actual
-    dist_train <- train_df%>%
-      filter(admin_town_en == ar_fitted$admin_town_en[i])
+    dist_train <- train_data%>%
+      filter(admin_town_en == ar_fitted$admin_town_en[k])
     dist_train$forecast <- ar_fitted$x
     
     # label your model forecasts for later visualization
     dist_train <- dist_train %>%
-      mutate(model = "ar")
-    
-    #rbind to one dataframe
-    full_df_train <- rbind(dist_train,full_df_train)
+      mutate(model = "arima")
+    ar_dist_train <- rbind(ar_dist_train,dist_train)
   }
-  return(full_df_train)
+  
+  return(list(ar_forecast_date, ar_dist_train))
 }
-
 
 
 # plot forecasts to verify nothing insane happened
@@ -179,7 +197,7 @@ ar.plot <- function(ar_result){
 # LINEAR REGRESSION FORECAST
 ## FORECAST in testing for 30 days
 
-lm.model <- function(nest_ts, test_data, repeated_day, last_day){
+lm.model <- function(nest_ts, train_data, test_data, repeated_day, last_day){
   lm_models <- nest_ts %>%
     mutate(lm_fit = map(.x=dem_df,
                         .f = function(x) tslm(x ~ trend + season)))
@@ -210,12 +228,32 @@ lm.model <- function(nest_ts, test_data, repeated_day, last_day){
            value = NULL,
            sum_offline_scooter = NULL)
   
-  return(lm_forecast_date)
+  lm_dist_train <- data.frame()
+  
+  for (k in 1:3) {
+    #get fitted value
+    lm_fitted <- data.frame(lm_models[[3]][[k]]$fitted.values)
+    lm_fitted$admin_town_en <- lm_models$admin_town_en[k]
+    
+    # conbine fitted and actual
+    dist_train <- train_data%>%
+      filter(admin_town_en == lm_fitted$admin_town_en[k])
+    dist_train$forecast <- lm_fitted$lm_models..3....k...fitted.values
+    
+    # label your model forecasts for later visualization
+    dist_train <- dist_train %>%
+      mutate(model = "lm")
+    dist_train$forecast <- as.numeric(dist_train$forecast)
+    
+    lm_dist_train <- rbind(lm_dist_train,dist_train)
+  }
+  
+  return(list(lm_forecast_date, lm_dist_train))
 }
 
 ################# 
 # ETS FORECAST
-ets.model <- function(nest_ts, test_data, repeated_day, last_day){
+ets.model <- function(nest_ts, train_data, test_data, repeated_day, last_day){
   ets_models <- nest_ts %>%
     mutate(ets_fit = map(.x=dem_df,
                          .f = ets))
@@ -239,13 +277,32 @@ ets.model <- function(nest_ts, test_data, repeated_day, last_day){
   #label your model forecasts for later visualization
   ets_forecast_date <- ets_forecast_date %>%
     mutate(model = 'ets')
-  return(ets_forecast_date)
+  
+  ets_dist_train <- data.frame()
+  
+  for (k in 1:3) {
+    #get fitted value
+    ets_fitted <- data.frame(ets_models[[3]][[k]]$fitted)
+    ets_fitted$admin_town_en <- ets_models$admin_town_en[k]
+    
+    # conbine fitted and actual
+    dist_train <- train_data%>%
+      filter(admin_town_en == ets_fitted$admin_town_en[k])
+    dist_train$forecast <- ets_fitted$y
+    
+    # label your model forecasts for later visualization
+    dist_train <- dist_train %>%
+      mutate(model = "ets")
+    ets_dist_train <- rbind(ets_dist_train,dist_train)
+  }
+  
+  return(list(ets_forecast_date, ets_dist_train))
 }
 
 ################# 
 # Seasonal NAIVE FORECAST
 
-snaive.model <- function(test_df, n){
+snaive.model <- function(train_data, test_df, n){
   dist_valid_snaive <- data.frame(admin_town_en = test_df$admin_town_en, 
                                   #sum_offline_scooter = test_df$sum_offline_scooter, 
                                   service_hour_date = test_df$service_hour_date, 
@@ -258,6 +315,9 @@ snaive.model <- function(test_df, n){
   dist_valid_snaive <- dist_valid_snaive %>%
     mutate(model = "snaive")
   
+  dist_valid_snaive <- dist_valid_snaive %>%
+    filter(as.Date(service_hour_date) < as.Date('2020-08-31'))
+  
   dist_valid_snaive <- as.data.frame(dist_valid_snaive)
   
   snaive_forecast_date <- dist_valid_snaive %>%
@@ -267,14 +327,32 @@ snaive.model <- function(test_df, n){
   snaive_forecast_date <- snaive_forecast_date %>%
     left_join(test_df, by = c('service_hour_date'='service_hour_date', 'admin_town_en'))
   
-  return(snaive_forecast_date)
+  dist_train_snaive <- data.frame(admin_town_en = train_data$admin_town_en,
+                                  sum_offline_scooter = train_data$sum_offline_scooter,
+                                  service_hour_date = train_data$service_hour_date,
+                                  shift = train_data$shift,
+                                  weekend_or_weekday = train_data$weekend_or_weekday)
+  
+  dist_train_snaive$forecast[8:nrow(train_data)] <- train_data$sum_offline_scooter[1:(nrow(train_data)-7)]
+  
+  dist_train_snaive <- dist_train_snaive%>%
+    group_by(admin_town_en)%>%
+    mutate(forecast = ifelse(as.Date(service_hour_date) < as.Date('2020-02-08'),  NA, forecast ))
+  
+  # label your model forecasts for later visualization
+  dist_train_snaive <- dist_train_snaive %>%
+    mutate(model = "snaive")
+  
+  dist_train_snaive <- as.data.frame(dist_train_snaive)
+  
+  return(list(snaive_forecast_date, dist_train_snaive))
 }
 
 
 ################# 
 #Nerual Net
 
-nn.model <- function(nest_ts, test_data, repeated_day, last_day){
+nn.model <- function(nest_ts, train_data, test_data, repeated_day, last_day){
   nn_models <- nest_ts %>%
     mutate(nn_fit = map(.x=dem_df,
                         .f = function(x) nnetar(x, repeats = 5, size=10)))
@@ -299,13 +377,33 @@ nn.model <- function(nest_ts, test_data, repeated_day, last_day){
   nn_forecast_date <- nn_forecast_date %>%
     mutate(model = 'nn')
   
-  return(nn_forecast_date)
+  nn_dist_train <- data.frame()
+  
+  for (k in 1:3) {
+    #get fitted value
+    nn_fitted <- data.frame(nn_models[[3]][[k]][["fitted"]])
+    nn_fitted$admin_town_en <- nn_models$admin_town_en[k]
+    # conbine fitted and actual
+    dist_train <- train_data%>%
+      filter(admin_town_en == nn_fitted$admin_town_en[k])
+    dist_train$forecast <- nn_fitted[1]
+    
+    # label your model forecasts for later visualization
+    dist_train <- dist_train %>%
+      mutate(model = "nn")
+
+    dist_train$forecast <- data.matrix(dist_train$forecast)
+    
+    nn_dist_train <- rbind(nn_dist_train,dist_train)
+  }
+  
+  return(list(nn_forecast_date, nn_dist_train))
 }
 
 #####################
 # MOVING AVERAGE
 
-mv.model <- function(nest_ts, test_data, repeated_day, last_day){
+mv.model <- function(nest_ts, train_data, test_data, repeated_day, last_day){
   mv_models <- nest_ts %>%
     mutate(mv_fit = map(.x=dem_df,
                         .f = function(x) rollmean(x, k = 12, align = "right")))
@@ -329,4 +427,25 @@ mv.model <- function(nest_ts, test_data, repeated_day, last_day){
   # label your model forecasts for later visualization
   mv_forecast_date <- mv_forecast_date %>%
     mutate(model = 'mv')
+  
+  mv_dist_train <- data.frame()
+  
+  for (k in 1:3) {
+    #get fitted value
+    mv_fitted <- data.frame(mv_models$mv_fit[[k]])
+    mv_fitted$admin_town_en <- mv_models$admin_town_en[k]
+    
+    # conbine fitted and actual
+    dist_train <- train_data%>%
+      filter(admin_town_en == mv_fitted$admin_town_en[k])
+    dist_train$forecast <- NA
+    dist_train[12:nrow(dist_train),]$forecast <- mv_fitted$sum_offline_scooter
+    
+    # label your model forecasts for later visualization
+    dist_train <- dist_train %>%
+      mutate(model = "mv")
+    
+    mv_dist_train <- rbind(mv_dist_train,dist_train)
+  }
+  return(list(mv_forecast_date, mv_dist_train))
 }

@@ -11,18 +11,28 @@ library(ModelMetrics)
 wemo.df <- read.csv("data/Data_Jan_to_Aug.csv")
 wemo.df$service_hour=as.POSIXct(paste(wemo.df$service_hour_date, wemo.df$shift), format="%Y-%m-%d %H:%M:%S")
 
+wemo.df$service_hour=as.POSIXct(paste(wemo.df$service_hour_date, wemo.df$shift), format="%Y-%m-%d %H:%M:%S", tz="UTC")
+attributes(wemo.df$service_hour)$tzone <- "Asia/Taipei"
+
+wemo.df$service_hour_date <- date(wemo.df$service_hour)
+wemo.df$shift <- format(wemo.df$service_hour,format = '%T')
+
 # Filter area & time (days without 3 shifts)
+# wemo.df.new <- wemo.df%>%
+#   filter(admin_town_zh != "三重區" & admin_town_zh != "超出營運範圍"& admin_town_zh != "泰山區"
+#          & admin_town_zh != "五股區" & admin_town_zh != "土城區" & admin_town_zh != "樹林區" &
+#            admin_town_zh != "汐止區" & service_hour_date != "2020-01-31" & service_hour_date != "2020-08-31")
+
 wemo.df.new <- wemo.df%>%
-  filter(admin_town_zh != "三重區" & admin_town_zh != "超出營運範圍"& admin_town_zh != "泰山區"
-         & admin_town_zh != "五股區" & admin_town_zh != "土城區" & admin_town_zh != "樹林區" &
-           admin_town_zh != "汐止區")
+  filter(admin_town_zh == "大安區" | admin_town_zh == "內湖區" | admin_town_zh == "新莊區")%>%
+  filter(service_hour_date != as.Date("2020-01-31") & service_hour_date != as.Date("2020-08-31"))
 
 # Change type to character
 wemo.df.new$service_hour_date <- as.character(wemo.df.new$service_hour_date)
 
 # Shift1 + Whole week
 shift_1 <- wemo.df.new%>%
-  filter(shift == '08:00:00')
+  filter(shift == '00:00:00')
 
 ### Create train/validation sets
 # Whole week
@@ -80,8 +90,8 @@ forecast_results <- rbind(train_s1_x, lm_forecast_date)
 
 forecast_results$sum_offline_scooter.y <- ifelse(forecast_results$service_hour_date >= as.Date('2020-08-30') & forecast_results$service_hour_date <= as.Date('2020-09-12'), NA, forecast_results$sum_offline_scooter.y)
 
-train_valid_df  <- forecast_results %>%
-  filter(admin_town_en == "Da’an Dist" | admin_town_en == "Neihu Dist" | admin_town_en == "Xinzhuang Dist")
+# train_valid_df  <- forecast_results %>%
+#   filter(admin_town_en == "Da’an Dist" | admin_town_en == "Neihu Dist" | admin_town_en == "Xinzhuang Dist")
 
 plot.ts <- function(data, time){
   plot <- data %>%
@@ -97,5 +107,5 @@ plot.ts <- function(data, time){
   return(plot)
 }
 
-print(plot.ts(forecast_results, '08:00:00'))
-print(plot.ts(train_valid_df, '08:00:00'))
+print(plot.ts(forecast_results, '00:00:00'))
+# print(plot.ts(train_valid_df, '00:00:00'))

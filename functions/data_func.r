@@ -10,17 +10,22 @@ library(sweep)
 ### Read data
 # Read in data
 wemo.df <- read.csv("data/Data_Jan_to_Aug.csv")
-wemo.df$service_hour=as.POSIXct(paste(wemo.df$service_hour_date, wemo.df$shift), format="%Y-%m-%d %H:%M:%S")
+# wemo.df$service_hour=as.POSIXct(paste(wemo.df$service_hour_date, wemo.df$shift), format="%Y-%m-%d %H:%M:%S")
+wemo.df$service_hour=as.POSIXct(paste(wemo.df$service_hour_date, wemo.df$shift), format="%Y-%m-%d %H:%M:%S", tz="UTC")
+attributes(wemo.df$service_hour)$tzone <- "Asia/Taipei"
+
+wemo.df$service_hour_date <- date(wemo.df$service_hour)
+wemo.df$shift <- format(wemo.df$service_hour,format = '%T')
 
 # Filter area & time (days without 3 shifts)
-wemo.df.new <- wemo.df%>%
-  filter(admin_town_zh != "三重區" & admin_town_zh != "超出營運範圍"& admin_town_zh != "泰山區"
-         & admin_town_zh != "五股區" & admin_town_zh != "土城區" & admin_town_zh != "樹林區" &
-           admin_town_zh != "汐止區" & service_hour_date != "2020-01-31" & service_hour_date != "2020-08-31")
-
 # wemo.df.new <- wemo.df%>%
-#   filter(admin_town_zh == "大安區" | admin_town_zh == "內湖區" | admin_town_zh == "新莊區")%>%
-#   filter(service_hour_date != as.Date("2020-01-31") & service_hour_date != as.Date("2020-08-31"))
+#   filter(admin_town_zh != "三重區" & admin_town_zh != "超出營運範圍"& admin_town_zh != "泰山區"
+#          & admin_town_zh != "五股區" & admin_town_zh != "土城區" & admin_town_zh != "樹林區" &
+#            admin_town_zh != "汐止區" & service_hour_date != "2020-01-31" & service_hour_date != "2020-08-31")
+
+wemo.df.new <- wemo.df%>%
+  filter(admin_town_zh == "大安區" | admin_town_zh == "內湖區" | admin_town_zh == "新莊區")%>%
+  filter(service_hour_date != as.Date("2020-01-31") & service_hour_date != as.Date("2020-08-31"))
 
 # Derived variable (Weekend or weekday)
 wemo.df.new$weekday<-weekdays(wemo.df.new$service_hour)
@@ -38,7 +43,7 @@ wemo.df.new <- wemo.df.new %>%
 # shift.time <- c("00:00:00", "08:00:00", "16:00:00")
 # shift_1 <- separate_shift(wemo.df.new, shift.time[1])
 
-shift.time <- c("08:00:00", "16:00:00", "00:00:00")
+shift.time <- c("00:00:00", "08:00:00", "16:00:00")
 
 separate_shift <- function(data, time){
   shift <- data%>%

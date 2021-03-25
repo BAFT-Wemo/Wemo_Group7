@@ -9,23 +9,22 @@ library(sweep)
 
 ### Read data
 # Read in data
-wemo.df <- read.csv("data/Data_Jan_to_Aug.csv")
+wemo.df <- read.csv("data/wemo.csv")
 # wemo.df$service_hour=as.POSIXct(paste(wemo.df$service_hour_date, wemo.df$shift), format="%Y-%m-%d %H:%M:%S")
-wemo.df$service_hour=as.POSIXct(paste(wemo.df$service_hour_date, wemo.df$shift), format="%Y-%m-%d %H:%M:%S", tz="UTC")
+wemo.df$service_hour=as.POSIXct(paste(wemo.df$date, wemo.df$shift), format="%Y-%m-%d %H:%M:%S", tz="UTC")
 attributes(wemo.df$service_hour)$tzone <- "Asia/Taipei"
 
 wemo.df$service_hour_date <- date(wemo.df$service_hour)
 wemo.df$shift <- format(wemo.df$service_hour,format = '%T')
 
 # Filter area & time (days without 3 shifts)
-# wemo.df.new <- wemo.df%>%
-#   filter(admin_town_zh != "三重區" & admin_town_zh != "超出營運範圍"& admin_town_zh != "泰山區"
-#          & admin_town_zh != "五股區" & admin_town_zh != "土城區" & admin_town_zh != "樹林區" &
-#            admin_town_zh != "汐止區" & service_hour_date != "2020-01-31" & service_hour_date != "2020-08-31")
+ wemo.df.new <- wemo.df%>%
+   filter(town != "Sanchong Dist" & town != "out of boundary"& town != "Taishan Dist"
+          & town != "Wugu Dist" & town != "Tucheng Dist" & town != "Shulin Dist" &
+            town != "Xizhi Dist")
 
-wemo.df.new <- wemo.df%>%
-  filter(admin_town_zh == "大安區" | admin_town_zh == "內湖區" | admin_town_zh == "新莊區")%>%
-  filter(service_hour_date != as.Date("2020-01-31") & service_hour_date != as.Date("2020-08-31"))
+# wemo.df.new <- wemo.df%>%
+#  filter(admin_town_zh == "大安區" | admin_town_zh == "內湖區" | admin_town_zh == "新莊區")
 
 # Derived variable (Weekend or weekday)
 wemo.df.new$weekday<-weekdays(wemo.df.new$service_hour)
@@ -36,7 +35,7 @@ wemo.df.new$service_hour_date <- as.character(wemo.df.new$service_hour_date)
 
 # Filter columns
 wemo.df.new <- wemo.df.new %>% 
-  select(admin_town_en, sum_offline_scooter, service_hour_date, shift, weekend_or_weekday)
+  select(town, sum_offline_scooter, service_hour_date, shift, weekend_or_weekday, total_rent, is_holiday)
 
 ### separate shift into three time series
 # e.g.
@@ -67,7 +66,7 @@ holiday_df <- external_data("data/holiday.csv")
 
 exter.df <- function(shift_df, rain_df, holiday_df){
   joined_tibble <- left_join(shift_df, rain_df,
-                      by = c("service_hour_date" = "Date", "admin_town_en" = "admin_town_en"))
+                      by = c("service_hour_date" = "Date", "town" = "town"))
   
   joined_tibble <- left_join(joined_tibble, holiday_df, 
                              by = c("service_hour_date" = "Date"))
@@ -81,11 +80,11 @@ exter.df <- function(shift_df, rain_df, holiday_df){
 
 plot.ts <- function(data, time){
   plot <- data %>%
-    group_by(admin_town_en)%>%
-    ggplot(aes(as.Date(service_hour_date), sum_offline_scooter, color=admin_town_en))+
+    group_by(town)%>%
+    ggplot(aes(as.Date(service_hour_date), sum_offline_scooter, color=town))+
     geom_line(size=.4)+
     guides(color=F)+
-    facet_wrap(~admin_town_en, nrow=5, scales='free_y')+
+    facet_wrap(~town, nrow=5, scales='free_y')+
     labs(x='', title=paste("Time series for offline scooters in", time, "on training data in weekdays"))
   return(plot)
 }
@@ -100,6 +99,7 @@ roll_forward <- c("2020-08-02", "2020-07-26", "2020-07-19", "2020-07-12",
                   "2020-07-05", "2020-06-28", "2020-06-21", "2020-06-14")
 
 districts <- c("Da’an Dist", "Neihu Dist", "Xindian Dist")
+
 
 
 train_data <-function(data, date){
@@ -117,8 +117,8 @@ test_data <-function(data, date){
 nest_a <- function(data){
   nest_obj <- data%>%
     mutate(service_hour_date = ymd(service_hour_date))%>%
-    group_by(admin_town_en)%>%
-    dplyr::select(-admin_town_en, sum_offline_scooter)%>%
+    group_by(town)%>%
+    dplyr::select(-town, sum_offline_scooter)%>%
     tidyr::nest(.key = "dem_df")
   return(nest_obj)
 }

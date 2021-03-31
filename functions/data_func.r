@@ -23,6 +23,8 @@ wemo.df$shift <- format(wemo.df$service_hour,format = '%T')
           & town != "Wugu Dist" & town != "Tucheng Dist" & town != "Shulin Dist" &
             town != "Xizhi Dist")
 
+ wemo.df.new <- wemo.df.new%>%
+     filter(town == "Da’an Dist" | town == "Neihu Dist" | town == "Xinzhuang Dist")
 # wemo.df.new <- wemo.df%>%
 #  filter(admin_town_zh == "大安區" | admin_town_zh == "內湖區" | admin_town_zh == "新莊區")
 
